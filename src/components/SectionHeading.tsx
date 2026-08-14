@@ -8,6 +8,13 @@ type SectionHeadingProps = {
   title: ReactNode
   /** Chapô aligné à droite du titre sur grand écran, en dessous sur mobile. */
   description?: ReactNode
+  /**
+   * En pile : chapô sous le titre au lieu d'être à sa droite. C'est la variante
+   * utilisée quand le bandeau occupe une colonne d'une mise en page scindée.
+   */
+  stacked?: boolean
+  /** Contenu additionnel sous le chapô - encart, lien. Variante en pile. */
+  children?: ReactNode
 }
 
 /**
@@ -15,13 +22,21 @@ type SectionHeadingProps = {
  * chapô à droite alignés sur la même ligne de base. Extrait dès la première
  * section parce que le motif se répète sur les huit blocs du brief.
  */
-export function SectionHeading({ eyebrow, title, description }: SectionHeadingProps) {
+export function SectionHeading({
+  eyebrow,
+  title,
+  description,
+  stacked = false,
+  children,
+}: SectionHeadingProps) {
   const { ref, visible } = useReveal()
 
   return (
     <div
       ref={ref}
-      className={`reveal ${visible ? 'is-visible' : ''} mb-8 md:mb-12 md:flex md:items-end md:justify-between md:gap-10`}
+      className={`reveal ${visible ? 'is-visible' : ''} ${
+        stacked ? 'max-w-2xl' : 'mb-8 md:mb-12 md:flex md:items-end md:justify-between md:gap-10'
+      }`}
     >
       <div>
         <p className="mb-5 flex items-center gap-2.5 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-blood-600">
@@ -37,10 +52,16 @@ export function SectionHeading({ eyebrow, title, description }: SectionHeadingPr
       </div>
 
       {description && (
-        <p className="mt-5 max-w-88.75 leading-relaxed text-ink-500 text-pretty md:mt-0">
+        <p
+          className={`mt-5 leading-relaxed text-ink-500 text-pretty ${
+            stacked ? '' : 'max-w-88.75 md:mt-0'
+          }`}
+        >
           {description}
         </p>
       )}
+
+      {children}
     </div>
   )
 }

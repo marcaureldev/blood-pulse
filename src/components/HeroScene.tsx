@@ -4,7 +4,7 @@ import { BloodCells } from '@/components/BloodCells'
 
 /**
  * Visuel de repli : la goutte de la référence.
- * Sert dans trois cas — préférence « animations réduites », absence de WebGL2,
+ * Sert dans trois cas - préférence « animations réduites », absence de WebGL2,
  * et perte du contexte graphique. Le hero n'est donc jamais vide.
  */
 function DropFallback() {
@@ -58,7 +58,7 @@ export function HeroScene() {
 
   // Sur mobile le budget par pixel est le facteur limitant : on réduit d'abord
   // le nombre de pas de raymarch, puis la résolution interne, avant de toucher
-  // à la fréquence de rendu — la physique, elle, reste à pas fixe.
+  // à la fréquence de rendu - la physique, elle, reste à pas fixe.
   return (
     <BloodCells
       renderScale={compact ? 0.5 : 0.65}

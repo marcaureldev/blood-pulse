@@ -2,7 +2,7 @@
 @import 'tailwindcss';
 
 /* --------------------------------------------------------------------------
-   Design tokens — BloodPulse
+   Design tokens - BloodPulse
    Palette et typographie reprises à l'identique de la référence.
    -------------------------------------------------------------------------- */
 @theme {
@@ -147,7 +147,7 @@
     color: var(--color-ink-950);
   }
 
-  /* Focus visibility — navigation clavier */
+  /* Focus visibility - navigation clavier */
   :focus-visible {
     outline: 3px solid var(--color-blood-600);
     outline-offset: 3px;

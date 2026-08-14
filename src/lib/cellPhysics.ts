@@ -3,7 +3,7 @@
  *
  * Le modèle n'est pas celui de corps rigides qui s'entrechoquent, mais celui
  * d'un liquide : les gouttes se pénètrent, se retiennent entre elles et
- * amortissent mutuellement leur vitesse. Trois forces de paire décrivent ça —
+ * amortissent mutuellement leur vitesse. Trois forces de paire décrivent ça -
  * une répulsion douce à courte portée qui empêche l'effondrement, une cohésion
  * à moyenne portée qui tient la masse ensemble, et une viscosité qui rapproche
  * les vitesses des voisines. C'est la viscosité qui donne au mouvement son
@@ -38,7 +38,7 @@ const REFERENCE_RADIUS = 0.26
 
 /**
  * Distance d'équilibre entre deux gouttes, en fraction de la somme des rayons.
- * En dessous de 1, elles se chevauchent en permanence — c'est ce recouvrement
+ * En dessous de 1, elles se chevauchent en permanence - c'est ce recouvrement
  * qui laisse le lissage du shader les fondre en une seule masse.
  */
 const REST_OVERLAP = 0.82
@@ -59,7 +59,7 @@ const POINTER_STRENGTH = 14.5
  * Traînée du curseur. La répulsion seule fait fuir la position du pointeur,
  * quelle que soit la façon dont on le déplace : les gouttes s'écartent mais
  * n'obéissent pas. Ce terme les entraîne dans le **sens du déplacement**, ce
- * qui rend le balayage lisible — on pousse la matière, on ne la disperse plus
+ * qui rend le balayage lisible - on pousse la matière, on ne la disperse plus
  * seulement.
  */
 const POINTER_DRAG = 0.55
@@ -70,7 +70,7 @@ const MAX_POINTER_SPEED = 6
 /**
  * Bornes du volume. La contrainte sur XY est **radiale**, pas par axe : avec des
  * bornes cubiques, un corps coincé dans un coin respecte chaque axe tout en se
- * retrouvant à une distance hypot(b, b) du centre — soit 41 % plus loin que la
+ * retrouvant à une distance hypot(b, b) du centre - soit 41 % plus loin que la
  * limite voulue, donc hors cadre.
  */
 const BOUNDS_RADIUS = 0.85
@@ -79,7 +79,7 @@ const BOUNDS_Z = 0.45
 /**
  * Plafond de vitesse. Il ne doit rattraper que les valeurs aberrantes : dès
  * qu'une part notable des gouttes s'y colle, elles avancent toutes à la même
- * vitesse exacte et le mouvement devient uniforme — l'inverse d'un fluide.
+ * vitesse exacte et le mouvement devient uniforme - l'inverse d'un fluide.
  */
 const MAX_SPEED = 4.5
 
@@ -346,7 +346,7 @@ export function createSimulation() {
   // Pré-chauffage. La distribution initiale place les gouttes au hasard, donc
   // avec de forts recouvrements que la répulsion résout brutalement : sans ça,
   // le visiteur voit la masse se disloquer puis se rassembler pendant les deux
-  // premières secondes — précisément à l'ouverture de la page. On absorbe ce
+  // premières secondes - précisément à l'ouverture de la page. On absorbe ce
   // transitoire hors écran, le hero s'ouvre sur une masse déjà stable.
   const idle: PointerState = { x: 0, y: 0, vx: 0, vy: 0, weight: 0 }
   for (let i = 0; i < 260; i++) {

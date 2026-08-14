@@ -10,9 +10,9 @@ export type BloodReserve = {
 };
 
 export const BLOOD_RESERVES: BloodReserve[] = [
-  { group: 'O-', level: 'critical', percentage: 22, label: 'Urgence vitale — besoin critique' },
+  { group: 'O-', level: 'critical', percentage: 22, label: 'Urgence vitale - besoin critique' },
   { group: 'O+', level: 'low', percentage: 38, label: 'Besoin élevé' },
-  { group: 'A-', level: 'critical', percentage: 25, label: 'Urgence vitale — besoin critique' },
+  { group: 'A-', level: 'critical', percentage: 25, label: 'Urgence vitale - besoin critique' },
   { group: 'A+', level: 'ok', percentage: 55, label: 'Réserve modérée' },
   { group: 'B-', level: 'low', percentage: 35, label: 'Besoin élevé' },
   { group: 'B+', level: 'ok', percentage: 58, label: 'Réserve modérée' },

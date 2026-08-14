@@ -88,14 +88,12 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Right: WebGL scene + live reserves */}
+          {/* Right: WebGL scene */}
           <div
             className="relative reveal is-visible"
             style={{ animationDelay: "0.15s" }}
           >
             <div className="relative aspect-square max-w-md mx-auto">
-
-              {/* Scène Unicorn Studio — remplace la goutte statique de la référence */}
               <HeroScene />
             </div>
           </div>

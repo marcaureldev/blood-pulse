@@ -156,7 +156,7 @@ void main() {
   float thick = thicknessAt(p, n);
 
   // Beer-Lambert par canal. Additionner un rose sur du rouge sombre saturait le
-  // canal rouge et faisait monter vert et bleu — d'où le gris. Ici la couleur
+  // canal rouge et faisait monter vert et bleu - d'où le gris. Ici la couleur
   // naît de ce qui reste après absorption, la saturation est donc garantie.
   vec3 transmit = exp(-thick * ABSORPTION);
 

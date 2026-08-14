@@ -27,7 +27,7 @@ export function Navbar() {
       }`}
     >
       <nav className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-        <a href="#top" className="flex items-center gap-2 group" aria-label="Accueil — Don de Sang">
+        <a href="#top" className="flex items-center gap-2 group" aria-label="Accueil - Don de Sang">
           <span className="relative">
             <Droplet className="w-7 h-7 text-blood-600 fill-blood-500 transition-transform group-hover:scale-110" />
           </span>

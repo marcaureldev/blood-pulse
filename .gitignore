@@ -23,5 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 
-# Prototypes de référence — support de travail, hors livrable
+# Prototypes de référence - support de travail, hors livrable
 _refs/
