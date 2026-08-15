@@ -68,19 +68,7 @@ export function FAQ() {
                     </span>
                   </button>
                 </h3>
-
-                {/*
-                  La réponse reste montée et se déplie par la hauteur de la
-                  ligne de grille : c'est le seul moyen d'animer vers `auto`
-                  sans mesurer le contenu au JavaScript. Un simple montage
-                  conditionnel, lui, ferait sauter le panneau d'un coup.
-
-                  `invisible` est indispensable : sans lui, une réponse repliée
-                  reste lisible par les lecteurs d'écran alors que le bouton
-                  annonce `aria-expanded="false"`. La transition sur
-                  `visibility` étant discrète mais tenue jusqu'au bout, le texte
-                  reste affiché pendant tout le repli avant de disparaître.
-                */}
+                
                 <div
                   id={panelId}
                   role="region"

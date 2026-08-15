@@ -58,18 +58,30 @@ const float FOCAL = ${FOCAL.toFixed(4)};
 uniform vec2 uResolution;
 uniform vec4 uBodies[COUNT];
 uniform float uBoundRadius;
+uniform float uPulse;
 
 out vec4 fragColor;
 
 // Teinte du sang en transmission : le rouge traverse la matière, le vert et le
 // bleu y sont éteints. Ce sont ces coefficients d'absorption, et non un
 // dégradé peint à la main, qui produisent le passage de l'écarlate des bords
-// fins au bordeaux profond du coeur.
-const vec3 ABSORPTION = vec3(1.15, 3.5, 4.2);
+// fins au coeur plus dense.
+//
+// L'absorption du rouge est volontairement faible (0,45 contre 1,15
+// auparavant) : c'est elle qui décidait de la brûlure du coeur. À 1,15 la
+// matière épaisse virait au bordeaux ; ici le rouge traverse presque
+// intégralement et la masse reste vive de bout en bout. Le vert et le bleu
+// restent fortement éteints, ce qui garantit la saturation.
+// L'absorption du rouge est **nulle**. C'était elle qui noircissait le coeur :
+// toute valeur non nulle fait chuter le canal rouge dans les zones épaisses,
+// et la teinte glisse vers le bordeaux. À zéro, le rouge traverse la matière
+// sans perte quelle que soit l'épaisseur. Le vert et le bleu restent, eux,
+// fortement éteints — c'est de cet écart, et non d'une teinte peinte, que
+// naît la saturation.
+const vec3 ABSORPTION = vec3(0.0, 3.4, 4.0);
 
-const vec3 C_SCATTER = vec3(0.827, 0.184, 0.184); // lumière diffusée dans la matière
-const vec3 C_SURFACE = vec3(0.36, 0.045, 0.05); // réflexion de surface, sombre
-const vec3 C_RIM = vec3(1.0, 0.28, 0.22);
+const vec3 C_SCATTER = vec3(1.0, 0.05, 0.04);
+const vec3 C_RIM = vec3(1.0, 0.42, 0.34);
 
 // Union lissée polynomiale : en dessous de k, les deux surfaces se rejoignent
 // par un raccord continu au lieu d'une arête.
@@ -160,24 +172,38 @@ void main() {
   // naît de ce qui reste après absorption, la saturation est donc garantie.
   vec3 transmit = exp(-thick * ABSORPTION);
 
-  // Lumière traversante : le contre-jour allume les bords minces.
-  vec3 color = C_SCATTER * transmit * (back * 1.5 + 0.42);
+  // L'éclairage ne produit plus qu'un **scalaire d'intensité**. Auparavant
+  // chaque source ajoutait sa propre couleur — une réflexion de surface sombre,
+  // un contre-jour teinté — et leur somme dérivait la teinte vers le brique.
+  // Ici la lumière fait varier la luminosité, jamais la teinte : le rouge est
+  // décidé une fois, par C_SCATTER, et rien ne le déplace.
+  float lit = 0.66 + back * 0.62 + lambert * 0.48;
 
-  // Réflexion de surface, volontairement sombre pour ne pas délaver la masse.
-  color += C_SURFACE * (0.28 + lambert * 0.85);
+  // La systole embrase la matière en même temps qu'elle la gonfle. Le gain
+  // s'applique **par le bas** : la couleur sature près du blanc, donc éclaircir
+  // au-dessus du repos ne se voyait pas — la compression des hautes lumières
+  // avalait tout. En posant la diastole à 0,78, le battement se lit comme un
+  // retour de la braise et non comme un éclair.
+  lit *= 0.78 + uPulse * 0.50;
 
-  color += C_RIM * fresnel * 0.45;
+  vec3 color = C_SCATTER * transmit * lit;
 
+  // Liseré de bord, seule entorse admise : il reste rouge, simplement plus clair.
+  color += C_RIM * fresnel * 0.55;
+
+  // Unique point blanc de la scène, très étroit — c'est lui qui donne le
+  // vernis mouillé sans lequel la masse paraîtrait mate.
   vec3 halfVec = normalize(keyDir + view);
-  float spec = pow(clamp(dot(n, halfVec), 0.0, 1.0), 96.0);
-  color += vec3(1.0, 0.88, 0.84) * spec * 0.30;
+  float spec = pow(clamp(dot(n, halfVec), 0.0, 1.0), 110.0);
+  color += vec3(1.0) * spec * 0.22;
 
   // Compression douce des hautes lumières : sans elle, l'écrêtage brutal du
   // canal rouge reproduit exactement le délavage qu'on vient de corriger.
-  color = 1.0 - exp(-color * 1.35);
+  color = 1.0 - exp(-color * 1.9);
 
-  // Les zones minces laissent transparaître le fond de la page.
-  float alpha = clamp(0.55 + thick * 3.0, 0.0, 1.0);
+  // Opacité relevée : sous 0,72, le crème de la page transparaissait et
+  // délavait le rouge sur toute la périphérie.
+  float alpha = clamp(0.72 + thick * 3.0, 0.0, 1.0);
 
   fragColor = vec4(color, alpha);
 }
@@ -291,6 +317,7 @@ export function BloodCells({
     const uResolution = gl.getUniformLocation(program, 'uResolution')
     const uBodies = gl.getUniformLocation(program, 'uBodies')
     const uBoundRadius = gl.getUniformLocation(program, 'uBoundRadius')
+    const uPulse = gl.getUniformLocation(program, 'uPulse')
 
     gl.useProgram(program)
     gl.enableVertexAttribArray(aPosition)
@@ -414,6 +441,7 @@ export function BloodCells({
       gl.uniform2f(uResolution, canvas.width, canvas.height)
       gl.uniform4fv(uBodies, positions)
       gl.uniform1f(uBoundRadius, boundingSphere(simulation.bodies, BLEND))
+      gl.uniform1f(uPulse, simulation.pulse)
 
       gl.clear(gl.COLOR_BUFFER_BIT)
       gl.drawArrays(gl.TRIANGLES, 0, 3)
