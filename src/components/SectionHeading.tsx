@@ -1,27 +1,14 @@
-import type { ReactNode } from 'react'
-import { useReveal } from '@/hooks/useReveal'
+import type { ReactNode } from "react";
+import { useReveal } from "@/hooks/useReveal";
 
 type SectionHeadingProps = {
-  /** Surtitre court, en capitales. */
-  eyebrow: string
-  /** Titre de section. Accepte du JSX pour mettre un fragment en accent. */
-  title: ReactNode
-  /** Chapô aligné à droite du titre sur grand écran, en dessous sur mobile. */
-  description?: ReactNode
-  /**
-   * En pile : chapô sous le titre au lieu d'être à sa droite. C'est la variante
-   * utilisée quand le bandeau occupe une colonne d'une mise en page scindée.
-   */
-  stacked?: boolean
-  /** Contenu additionnel sous le chapô - encart, lien. Variante en pile. */
-  children?: ReactNode
-}
+  eyebrow: string;
+  title: ReactNode;
+  description?: ReactNode;
+  stacked?: boolean;
+  children?: ReactNode;
+};
 
-/**
- * Bandeau de titre commun à toutes les sections : surtitre, titre à gauche,
- * chapô à droite alignés sur la même ligne de base. Extrait dès la première
- * section parce que le motif se répète sur les huit blocs du brief.
- */
 export function SectionHeading({
   eyebrow,
   title,
@@ -29,13 +16,15 @@ export function SectionHeading({
   stacked = false,
   children,
 }: SectionHeadingProps) {
-  const { ref, visible } = useReveal()
+  const { ref, visible } = useReveal();
 
   return (
     <div
       ref={ref}
-      className={`reveal ${visible ? 'is-visible' : ''} ${
-        stacked ? 'max-w-2xl' : 'mb-8 md:mb-12 md:flex md:items-end md:justify-between md:gap-10'
+      className={`reveal ${visible ? "is-visible" : ""} ${
+        stacked
+          ? "max-w-2xl"
+          : "mb-8 md:mb-12 md:flex md:items-end md:justify-between md:gap-10"
       }`}
     >
       <div>
@@ -54,7 +43,7 @@ export function SectionHeading({
       {description && (
         <p
           className={`mt-5 leading-relaxed text-ink-500 text-pretty ${
-            stacked ? '' : 'max-w-88.75 md:mt-0'
+            stacked ? "" : "max-w-88.75 md:mt-0"
           }`}
         >
           {description}
@@ -63,5 +52,5 @@ export function SectionHeading({
 
       {children}
     </div>
-  )
+  );
 }

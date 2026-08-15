@@ -5,16 +5,9 @@ export function Hero() {
   return (
     <section
       id="top"
-      className="relative pt-28 pb-20 md:pt-36 md:pb-28 overflow-hidden"
+      className="pt-28 pb-20 min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {/* Background gradient mesh */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-linear-to-b from-cream-100 via-cream-50 to-cream-50" />
-        <div className="absolute top-0 right-0 w-150 h-150 bg-blood-500/8 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-125 h-125 bg-sage-300/15 rounded-full blur-[100px]" />
-      </div>
-
-      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+      <div className="max-w-7xl mx-auto px-8 flex-1">
         <div className="grid lg:grid-cols-[1.15fr_1fr] gap-12 lg:gap-8 items-center">
           {/* Left: copy */}
           <div className="reveal is-visible">
@@ -23,7 +16,7 @@ export function Hero() {
               <span>10 000 dons nécessaires chaque jour en France</span>
             </div>
 
-            <h1 className="font-display font-semibold text-[2.5rem] leading-[1.05] sm:text-6xl md:text-7xl text-ink-950 text-balance">
+            <h1 className="font-display font-semibold text-4xl leading-[1.05] sm:text-6xl md:text-7xl text-ink-950 text-balance">
               Un geste{" "}
               <span className="relative inline-block">
                 <span className="relative z-10 text-blood-600">simple</span>
@@ -46,7 +39,7 @@ export function Hero() {
               une vie sauvée.
             </h1>
 
-            <p className="mt-6 text-lg md:text-xl text-ink-500 leading-relaxed max-w-xl text-pretty">
+            <p className="mt-6 text-lg text-ink-500 leading-relaxed max-w-xl text-pretty">
               Vous n'avez jamais donné ? Ce n'est pas grave. Trois questions
               suffisent pour commencer :{" "}
               <span className="text-ink-800 font-medium">
@@ -70,21 +63,6 @@ export function Hero() {
                 <MapPin className="w-5 h-5 text-blood-600" />
                 Trouver un centre
               </a>
-            </div>
-
-            <div className="mt-10 flex items-center gap-6 text-sm text-ink-400">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-sage-400 animate-pulse-soft" />
-                <span>Don sécurisé</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blood-400 animate-pulse-soft" />
-                <span>Anonyme &amp; gratuit</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse-soft" />
-                <span>45 min sur place</span>
-              </div>
             </div>
           </div>
 

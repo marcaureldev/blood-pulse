@@ -26,11 +26,11 @@ const IMPACT_CARDS: ImpactCard[] = [
   },
 ]
 
-const TIMELINE = [
-  { label: 'Votre don', detail: '10 min de prélèvement' },
-  { label: 'Trois composants', detail: 'Globules, plasma, plaquettes' },
-  { label: 'Des vies aidées', detail: 'Dans les jours qui suivent' },
-]
+// const TIMELINE = [
+//   { label: 'Votre don', detail: '10 min de prélèvement' },
+//   { label: 'Trois composants', detail: 'Globules, plasma, plaquettes' },
+//   { label: 'Des vies aidées', detail: 'Dans les jours qui suivent' },
+// ]
 
 const TONE_CLASSES: Record<ImpactCard['tone'], string> = {
   blood: 'bg-blood-50 text-blood-600',
@@ -42,10 +42,9 @@ const CARD_SHADOW = 'shadow-[0_12px_32px_rgba(76,43,38,0.06)]'
 
 export function WhyDonate() {
   const cards = useReveal()
-  const timeline = useReveal<HTMLOListElement>()
 
   return (
-    <section id="pourquoi" className="bg-cream-100 py-20 md:py-28 lg:py-32">
+    <section id="pourquoi" className="bg-cream-100 py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeading
           eyebrow="Pourquoi donner"
@@ -132,41 +131,6 @@ export function WhyDonate() {
             </article>
           ))}
         </div>
-
-        {/* Ce que devient le don, dans le temps */}
-        <ol
-          ref={timeline.ref}
-          className={`reveal ${timeline.visible ? 'is-visible' : ''} mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.9fr_0.9fr] border border-cream-200 bg-white/55 p-4.5 md:mt-9 md:flex md:items-center md:gap-4 md:rounded-full md:px-6`}
-        >
-          {TIMELINE.map(({ label, detail }, index) => (
-            <li key={label} className="contents">
-              {index > 0 && (
-                <span
-                  aria-hidden="true"
-                  className="ml-3.5 h-3.5 w-px bg-cream-300 md:ml-0 md:h-px md:w-auto md:flex-[0.5]"
-                />
-              )}
-
-              <span className="flex flex-1 items-center gap-2.5">
-                <span
-                  className={`grid h-7.5 w-7.5 shrink-0 place-items-center rounded-full border text-[0.74rem] ${
-                    index === 0
-                      ? 'border-blood-600 bg-blood-600 text-white'
-                      : 'border-cream-300 text-ink-400'
-                  }`}
-                >
-                  {index + 1}
-                </span>
-                <span>
-                  <strong className="block text-[0.78rem] font-semibold text-ink-900">
-                    {label}
-                  </strong>
-                  <small className="block text-[0.68rem] text-ink-400">{detail}</small>
-                </span>
-              </span>
-            </li>
-          ))}
-        </ol>
       </div>
     </section>
   )

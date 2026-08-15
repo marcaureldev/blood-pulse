@@ -4,6 +4,11 @@ import { WhyDonate } from '@/components/WhyDonate'
 import { WhoCanDonate } from '@/components/WhoCanDonate'
 import { DonationProcess } from '@/components/DonationProcess'
 import { Preparation } from '@/components/Preparation'
+import { CentersDirectory } from '@/components/CentersDirectory'
+import { BloodReserves } from '@/components/BloodReserves'
+import { FAQ } from '@/components/FAQ'
+import { FinalCta } from '@/components/FinalCta'
+import { Footer } from '@/components/Footer'
 
 function App() {
   return (
@@ -15,7 +20,12 @@ function App() {
         <WhoCanDonate />
         <DonationProcess />
         <Preparation />
+        <CentersDirectory />
+        <BloodReserves />
+        <FAQ />
+        <FinalCta />
       </main>
+      <Footer />
     </div>
   )
 }

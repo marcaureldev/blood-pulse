@@ -19,11 +19,6 @@ import { SectionHeading } from '@/components/SectionHeading'
 import { useReveal } from '@/hooks/useReveal'
 import { ADVICE, type AdviceIcon, type AdvicePhase } from '@/data/process'
 
-/**
- * Chaque conseil porte l'icône de son propre contenu. Le proto de référence les
- * distribuait par `(i * 3 + j) % 8`, ce qui collait par exemple une cigarette en
- * face d'un conseil d'hydratation - l'icône devenait un bruit décoratif.
- */
 const ADVICE_ICONS: Record<AdviceIcon, LucideIcon> = {
   water: GlassWater,
   meal: Utensils,
@@ -72,12 +67,12 @@ const PHASE_STYLES: Record<AdvicePhase['phase'], PhaseStyle> = {
 }
 
 export function Preparation() {
-  const { ref, visible } = useReveal()
+  const { ref } = useReveal()
 
   return (
     <section
       id="preparation"
-      className="bg-linear-to-b from-cream-100 to-cream-50 py-20 md:py-28"
+      className="bg-linear-to-b from-cream-100 to-cream-50 py-20"
     >
       <div ref={ref} className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeading
@@ -98,10 +93,7 @@ export function Preparation() {
             return (
               <article
                 key={phase.phase}
-                className={`rounded-3xl border-2 bg-linear-to-br p-7 ${style.surface} ${style.border} ${
-                  visible ? 'animate-fade-up' : 'reveal'
-                }`}
-                style={{ animationDelay: `${index * 0.12}s` }}
+                className={`rounded-3xl border-2 bg-linear-to-br p-7 ${style.surface} ${style.border}`}
               >
                 <div className="mb-5 flex items-center gap-3">
                   <span

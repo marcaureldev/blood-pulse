@@ -37,7 +37,7 @@ export function WhoCanDonate() {
   return (
     <section
       id="qui-peut-donner"
-      className="bg-cream-50 py-20 md:py-28 lg:py-32"
+      className="bg-cream-50 py-20"
     >
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="grid items-center gap-9 lg:grid-cols-[0.9fr_1.1fr] lg:gap-25">

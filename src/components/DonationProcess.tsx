@@ -4,7 +4,6 @@ import { SectionHeading } from '@/components/SectionHeading'
 import { useReveal } from '@/hooks/useReveal'
 import { PROCESS_STEPS, TOTAL_DURATION, type StepIcon } from '@/data/process'
 
-/** Exhaustif par construction : ajouter une clé sans icône ne compile pas. */
 const STEP_ICONS: Record<StepIcon, LucideIcon> = {
   clipboard: ClipboardList,
   stethoscope: Stethoscope,
@@ -16,7 +15,7 @@ export function DonationProcess() {
   const { ref, visible } = useReveal()
 
   return (
-    <section id="deroulement" className="bg-cream-50 py-20 md:py-28">
+    <section id="deroulement" className="bg-cream-50 py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <SectionHeading
@@ -48,16 +47,15 @@ export function DonationProcess() {
           </div>
 
           <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {PROCESS_STEPS.map((step, index) => {
+            {PROCESS_STEPS.map((step) => {
               const Icon = STEP_ICONS[step.icon]
 
               return (
                 <li
                   key={step.num}
-                  className={`relative ${visible ? 'animate-fade-up' : 'reveal'}`}
-                  style={{ animationDelay: `${index * 0.15}s` }}
+                  className={`relative`}
                 >
-                  <div className="relative z-10 mx-auto mb-4 flex h-24 w-24 flex-col items-center justify-center rounded-full border-2 border-cream-200 bg-white shadow-sm transition-colors hover:border-blood-300 lg:mx-0">
+                  <div className="relative z-10 mx-auto mb-4 flex h-24 w-24 flex-col items-center justify-center rounded-full border-[1.5px] border-cream-400 bg-white transition-colors duration-300 hover:border-blood-500 lg:mx-0">
                     <Icon className="mb-1 h-8 w-8 text-blood-500" strokeWidth={1.5} aria-hidden="true" />
                     <span className="text-xs font-semibold text-ink-400">Étape {step.num}</span>
                   </div>
