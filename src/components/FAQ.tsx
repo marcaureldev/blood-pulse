@@ -15,7 +15,11 @@ export function FAQ() {
           eyebrow="FAQ & idées reçues"
           title={
             <>
-              Les questions qu'on n'ose <span className="text-blood-600">pas toujours</span> poser
+            Les{' '}
+            <span className="fx-marker [--ink:var(--color-blood-300)]">
+              questions
+            </span>{' '}
+            qu'on n'ose pas toujours poser
             </>
           }
           description="La peur du don vient souvent de l'inconnu. Voici les réponses franches aux questions les plus courantes."

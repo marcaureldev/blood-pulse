@@ -2,6 +2,7 @@ import { Navbar } from '@/components/Navbar'
 import { Hero } from '@/components/Hero'
 import { WhyDonate } from '@/components/WhyDonate'
 import { WhoCanDonate } from '@/components/WhoCanDonate'
+import { EligibilitySimulator } from '@/components/EligibilitySimulator'
 import { DonationProcess } from '@/components/DonationProcess'
 import { Preparation } from '@/components/Preparation'
 import { CentersDirectory } from '@/components/CentersDirectory'
@@ -18,6 +19,7 @@ function App() {
         <Hero />
         <WhyDonate />
         <WhoCanDonate />
+        <EligibilitySimulator />
         <DonationProcess />
         <Preparation />
         <CentersDirectory />

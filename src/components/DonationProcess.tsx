@@ -26,7 +26,7 @@ export function DonationProcess() {
                 Pas à pas, sans <span className="text-blood-600">surprise</span>
               </>
             }
-            description="Le don de sang n'est pas un événement mystérieux. Voici exactement ce qui vous attend, minute par minute."
+            description="Rien d'imprévu, rien d'inconnu. Voici ce qui vous attend, minute par minute."
           />
 
           <p className="flex shrink-0 items-center gap-2 rounded-2xl border border-blood-200/60 bg-blood-50 px-6 py-4 text-blood-700">

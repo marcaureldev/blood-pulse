@@ -19,21 +19,8 @@ export function Hero() {
             <h1 className="font-display font-semibold text-4xl leading-[1.05] sm:text-6xl md:text-7xl text-ink-950 text-balance">
               Un geste{" "}
               <span className="relative inline-block">
-                <span className="relative z-10 text-blood-600">simple</span>
-                <svg
-                  className="absolute -bottom-2 left-0 w-full h-3"
-                  viewBox="0 0 200 12"
-                  fill="none"
-                  preserveAspectRatio="none"
-                >
-                  <path
-                    d="M2 8 Q 100 2 198 8"
-                    stroke="#e64d4d"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    className="animate-draw"
-                  />
-                </svg>
+                <span className="relative z-10 fx-marker [--ink:var(--color-blood-300)]">simple</span>
+
               </span>
               ,<br />
               une vie sauvée.

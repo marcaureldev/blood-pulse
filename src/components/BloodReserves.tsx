@@ -37,7 +37,10 @@ export function BloodReserves() {
           title={
             <>
               Certains groupes sont plus{" "}
-              <span className="text-blood-600">attendus</span> que d'autres
+              <span className="fx-marker [--ink:var(--color-blood-300)]">
+                attendus
+              </span>{" "}
+              que d'autres
             </>
           }
           description="Les besoins varient selon les groupes sanguins. Sélectionnez un groupe pour comprendre qui il peut aider."

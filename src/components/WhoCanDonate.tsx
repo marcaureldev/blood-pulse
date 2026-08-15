@@ -1,4 +1,3 @@
-import { ArrowRight, Check } from "lucide-react";
 import { SectionHeading } from "@/components/SectionHeading";
 import { useReveal } from "@/hooks/useReveal";
 import {
@@ -10,99 +9,85 @@ import {
 
 const CRITERIA = [
   {
-    value: `${MIN_AGE}–${MAX_AGE}`,
+    value: `${MIN_AGE}-${MAX_AGE}`,
+    unit: "ans",
     title: "Âge",
     body: `À partir de ${MIN_AGE} ans, jusqu'à ${MAX_AGE} ans révolus.`,
   },
   {
-    value: `${MIN_WEIGHT_KG} kg`,
+    value: `${MIN_WEIGHT_KG}`,
+    unit: "kg minimum",
     title: "Poids",
-    body: "Un poids minimum pour que le volume prélevé reste sans risque pour vous.",
+    body: "En dessous, le volume prélevé représenterait une part trop grande de votre sang.",
   },
   {
     value: "Le jour J",
+    unit: "sans fièvre",
     title: "Bonne santé",
-    body: "Se sentir bien le jour du don, tout simplement.",
+    body: "Ni infection en cours, ni fatigue inhabituelle. Se sentir bien, simplement.",
   },
   {
-    value: `${MIN_DELAY_MONTHS.male}–${MIN_DELAY_MONTHS.female} mois`,
+    value: `${MIN_DELAY_MONTHS.male}-${MIN_DELAY_MONTHS.female}`,
+    unit: "mois d'écart",
     title: "Entre deux dons",
-    body: `Un délai de ${MIN_DELAY_MONTHS.male} mois pour les hommes, ${MIN_DELAY_MONTHS.female} mois pour les femmes.`,
+    body: `${MIN_DELAY_MONTHS.male} mois pour les hommes, ${MIN_DELAY_MONTHS.female} mois pour les femmes.`,
   },
+];
+
+const TILE_TONES = [
+  "bg-cream-50 hover:bg-white",
+  "bg-white hover:bg-cream-50",
+  "bg-cream-50 hover:bg-white sm:bg-white sm:hover:bg-cream-50",
+  "bg-white hover:bg-cream-50 sm:bg-cream-50 sm:hover:bg-white",
 ];
 
 export function WhoCanDonate() {
   const grid = useReveal();
 
   return (
-    <section
-      id="qui-peut-donner"
-      className="bg-cream-50 py-20"
-    >
+    <section id="qui-peut-donner" className="bg-cream-50 py-12">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <div className="grid items-center gap-9 lg:grid-cols-[0.9fr_1.1fr] lg:gap-25">
-          <SectionHeading
-            stacked
-            eyebrow="Qui peut donner"
-            title={
-              <>
-                Vous remplissez peut-être {" "}
-                <span className="text-blood-600">déjà les critères.</span>
-              </>
-            }
-            description="Les règles sont là pour vous protéger. Dans la majorité des cas, si vous êtes en bonne santé, vous pouvez donner."
-          >
-            <div className="mt-7 flex gap-3 rounded-2xl bg-sage-100 p-4 text-sage-700">
-              <span
-                aria-hidden="true"
-                className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sage-500 text-white"
-              >
-                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+        <SectionHeading
+          eyebrow="Qui peut donner"
+          title={
+            <>
+              Vous êtes peut-être{" "}
+              <span className="fx-marker [--ink:var(--color-blood-300)]">
+                déjà éligible.
               </span>
-              <p>
-                <strong className="block text-[0.82rem] font-semibold">
-                  Vous êtes probablement éligible
-                </strong>
-                <span className="mt-1 block text-[0.75rem] leading-relaxed">
-                  si vous avez entre {MIN_AGE} et {MAX_AGE} ans et pesez au
-                  moins {MIN_WEIGHT_KG} kg.
-                </span>
-              </p>
-            </div>
+            </>
+          }
+          description="Les règles sont là pour vous protéger. Dans la majorité des cas, être en bonne santé suffit."
+        />
 
-            <a
-              href="#eligibilite"
-              className="group mt-7 inline-flex items-center gap-2.5 text-[0.8rem] font-bold text-blood-600 transition-colors hover:text-blood-700"
+        <div
+          ref={grid.ref}
+          className={`reveal ${grid.visible ? "is-visible" : ""} mt-12 grid border-l border-t border-cream-200 sm:grid-cols-2`}
+        >
+          {CRITERIA.map(({ value, unit, title, body }, index) => (
+            <article
+              key={title}
+              className={`flex min-h-60 flex-col justify-between border-b border-r border-cream-200 p-8 transition-colors duration-300 ${TILE_TONES[index]}`}
             >
-              Faire le test en 2 minutes
-              <ArrowRight
-                className="h-4 w-4 transition-transform group-hover:translate-x-1"
-                aria-hidden="true"
-              />
-            </a>
-          </SectionHeading>
-
-          <div
-            ref={grid.ref}
-            className={`reveal ${grid.visible ? "is-visible" : ""} grid gap-3.5 sm:grid-cols-2`}
-          >
-            {CRITERIA.map(({ value, title, body }) => (
-              <article
-                key={title}
-                className="min-h-45 rounded-[18px] border border-cream-200 bg-white p-7 shadow-[0_12px_32px_rgba(76,43,38,0.06)]"
-              >
-                <span className="mb-7 inline-grid h-8.75 place-items-center rounded-[9px] bg-blood-50 px-2.75 font-display text-[0.75rem] font-bold text-blood-700">
+              <p className="sm:self-end text-start sm:text-right">
+                <span className="block font-display text-4xl font-semibold leading-none tracking-tight text-blood-500 lg:text-4xl">
                   {value}
                 </span>
-                <strong className="block font-display text-base font-bold text-ink-950">
+                <span className="mt-2 block text-[0.7rem] font-medium uppercase tracking-[0.12em] text-ink-400">
+                  {unit}
+                </span>
+              </p>
+
+              <div className="mt-10">
+                <h3 className="font-display text-xl font-semibold tracking-tight text-ink-950">
                   {title}
-                </strong>
-                <p className="mt-1.75 text-[0.78rem] leading-relaxed text-ink-500">
+                </h3>
+                <p className="mt-2 max-w-xs text-[0.85rem] leading-relaxed text-ink-500">
                   {body}
                 </p>
-              </article>
-            ))}
-          </div>
+              </div>
+            </article>
+          ))}
         </div>
       </div>
     </section>

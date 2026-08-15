@@ -130,6 +130,13 @@
 }
 
 @layer base {
+  :root {
+    --ink: currentColor;
+    --ink-on: var(--color-cream-50);
+    --ink-2: var(--color-blood-600);
+    --ink-3: var(--color-blood-800);
+  }
+
   html {
     scroll-behavior: smooth;
   }
@@ -167,6 +174,72 @@
   .glass {
     background: rgba(253, 251, 247, 0.72);
     backdrop-filter: blur(12px) saturate(140%);
+  }
+
+  /* ------------------------------------------------------------------------
+     Hi-Liter — trait de surligneur au repos, qui prend sa pleine hauteur au
+     survol.
+
+     Jetons de couleur, surchargeables sur n'importe quelle occurrence :
+       --ink    couleur du texte      --ink-2  surligneur
+       --ink-3  rehaut, couche basse
+     ---------------------------------------------------------------------- */
+  .fx-marker {
+    --mark-rest: 0.2em;
+    --mark-grown: 0.92em;
+    --mark-lift: 0.25em;
+    --mark-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    color: var(--ink);
+    padding: 0.1em 0.2em;
+    background-image:
+      linear-gradient(
+        100deg,
+        color-mix(in srgb, var(--ink-3) 55%, transparent),
+        color-mix(in srgb, var(--ink-3) 20%, transparent)
+      ),
+      linear-gradient(
+        100deg,
+        color-mix(in srgb, var(--ink-2) 95%, transparent),
+        color-mix(in srgb, var(--ink-2) 78%, transparent)
+      );
+    background-repeat: no-repeat;
+    /* Ancrage bas : la hauteur croît vers le haut, jamais vers le bas. */
+    background-position:
+      0 calc(100% - var(--mark-lift)),
+      0 calc(100% - var(--mark-lift));
+    background-size:
+      100% 0,
+      100% var(--mark-rest);
+    /* Sortie de survol : le texte reprend sa couleur tout de suite, avant que
+       le trait ne redescende. */
+    transition:
+      background-size 460ms var(--mark-ease),
+      color 160ms ease;
+  }
+
+  /* Le parent direct déclenche aussi : on survole un titre entier, pas un mot
+     de trois lettres perdu au milieu d'une ligne. */
+  .fx-marker:hover,
+  .fx-marker:focus-visible,
+  :where(h1, h2, h3, p, a, li, button):hover > .fx-marker,
+  :where(a, button):focus-visible > .fx-marker {
+    color: var(--ink-on);
+    background-size:
+      100% calc(var(--mark-grown) * 0.34),
+      100% var(--mark-grown);
+    /* Entrée : le texte ne blanchit qu'une fois le trait monté derrière lui.
+       Sans ce retard, il passerait au blanc sur fond crème et disparaîtrait
+       pendant les premières 150 ms. */
+    transition:
+      background-size 460ms var(--mark-ease),
+      color 200ms ease 150ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-marker {
+    transition: none;
   }
 }
 
