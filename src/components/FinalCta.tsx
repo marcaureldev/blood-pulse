@@ -31,7 +31,7 @@ export function FinalCta() {
         </h2>
 
         <p className="mx-auto mt-5 max-w-lg leading-relaxed text-blood-100 text-pretty">
-          Faites le premier pas. Nous vous accompagnons pour le reste.
+          Faites le premier pas. Le test prend deux minutes.
         </p>
 
         <a

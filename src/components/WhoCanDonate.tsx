@@ -46,9 +46,8 @@ export function WhoCanDonate() {
             eyebrow="Qui peut donner"
             title={
               <>
-                Vous êtes peut-être
-                <br />
-                <span className="text-blood-600">déjà prêt·e.</span>
+                Vous remplissez peut-être {" "}
+                <span className="text-blood-600">déjà les critères.</span>
               </>
             }
             description="Les règles sont là pour vous protéger. Dans la majorité des cas, si vous êtes en bonne santé, vous pouvez donner."

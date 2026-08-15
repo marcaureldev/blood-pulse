@@ -13,7 +13,7 @@ export function Hero() {
           <div className="reveal is-visible">
             <div className="inline-flex items-center gap-2 bg-blood-50 border border-blood-200/60 text-blood-700 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
               <HeartPulse className="w-4 h-4" />
-              <span>10 000 dons nécessaires chaque jour en France</span>
+              <span>1 % de la population : le seuil minimal fixé par l'OMS</span>
             </div>
 
             <h1 className="font-display font-semibold text-4xl leading-[1.05] sm:text-6xl md:text-7xl text-ink-950 text-balance">

@@ -15,13 +15,13 @@ const IMPACT_CARDS: ImpactCard[] = [
   {
     icon: Ambulance,
     title: 'Pour les urgences',
-    body: 'Accidents, hémorragies, opérations : votre sang est là quand chaque seconde compte.',
+    body: 'Hémorragie du post-partum, accidents, opérations : votre sang est là quand chaque seconde compte.',
     tone: 'blood',
   },
   {
     icon: Activity,
     title: 'Pour les maladies',
-    body: 'Les patients atteints de cancers ou de maladies chroniques ont besoin de transfusions régulières.',
+    body: 'Les patients atteints de cancers, de drépanocytose ou de paludisme grave ont besoin de transfusions régulières.',
     tone: 'sage',
   },
 ]
@@ -50,12 +50,12 @@ export function WhyDonate() {
           eyebrow="Pourquoi donner"
           title={
             <>
-              Un geste simple.
+              Le sang ne se fabrique pas.
               <br />
-              <span className="text-blood-600">Un impact immense.</span>
+              <span className="text-blood-600">Il se donne.</span>
             </>
           }
-          description="Le sang ne se fabrique pas. Chaque jour, des personnes comptent sur la générosité de donneurs comme vous."
+          description="Aucun laboratoire n'en produit. Chaque poche vient de quelqu'un qui s'est déplacé."
         />
 
         <div

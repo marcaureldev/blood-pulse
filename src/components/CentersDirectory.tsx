@@ -311,7 +311,7 @@ function CenterCard({
         type="button"
         onClick={onSelect}
         aria-haspopup="dialog"
-        className="group flex h-full w-full flex-col rounded-2xl border border-cream-200 bg-white p-5 text-left transition-all duration-300 hover:border-blood-500 hover:shadow-blood-950/5 cursor-pointer"
+        className="group flex h-full w-full flex-col rounded-2xl border border-cream-200 bg-white p-5 text-left transition-all duration-300 hover:border-blood-500 hover:shadow-blood-950/5 cursor-pointer focus:outline-none focus:ring focus:ring-blood-500 focus:ring-offset-2"
       >
         <div className="flex w-full items-start justify-between gap-2.5">
           <h3 className="line-clamp-2 font-display text-[0.93rem] font-bold leading-snug tracking-tight text-ink-950">

@@ -31,7 +31,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     title: 'Entretien médical',
     duration: '10 min',
     description:
-      "Un médecin vérifie votre état de santé, votre historique et confirme votre aptitude. C'est le moment qui compte. C'est lui qui décide.",
+      "Un médecin vérifie votre état de santé et votre historique. Lui seul confirme votre aptitude au don.",
     icon: 'stethoscope',
   },
   {
@@ -47,7 +47,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     title: 'Repos et collation',
     duration: '15 à 20 min',
     description:
-      "Un temps de repos avec une collation sucrée pour recharger les batteries. C'est aussi un moment d'échange avec l'équipe.",
+      "Un temps de repos avec une collation sucrée, le temps que l'organisme se rééquilibre. C'est aussi un moment d'échange avec l'équipe.",
     icon: 'coffee',
   },
 ]
@@ -99,7 +99,7 @@ export const ADVICE: AdvicePhase[] = [
     phase: 'during',
     title: 'Pendant le don',
     items: [
-      { icon: 'signal', text: 'Signalez à l’équipe si vous vous sentez fatigué·e ou nauséeux·se.' },
+      { icon: 'signal', text: "Signalez à l'équipe le moindre malaise ou vertige." },
       { icon: 'breathe', text: 'Détendez le bras et respirez calmement.' },
       { icon: 'still', text: 'Gardez le bras immobile pendant le prélèvement.' },
       { icon: 'ask', text: "L'équipe est là pour vous. Posez toutes vos questions." },
