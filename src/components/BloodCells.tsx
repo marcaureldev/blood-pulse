@@ -59,29 +59,68 @@ uniform vec2 uResolution;
 uniform vec4 uBodies[COUNT];
 uniform float uBoundRadius;
 uniform float uPulse;
+uniform float uTime;
 
 out vec4 fragColor;
 
-// Teinte du sang en transmission : le rouge traverse la matière, le vert et le
-// bleu y sont éteints. Ce sont ces coefficients d'absorption, et non un
-// dégradé peint à la main, qui produisent le passage de l'écarlate des bords
-// fins au coeur plus dense.
+// Teinte du sang en transmission. Le vert et le bleu sont fortement éteints
+// dans l'épaisseur, le rouge presque pas : c'est de cet écart, et non d'un
+// dégradé peint à la main, que naît la saturation.
 //
-// L'absorption du rouge est volontairement faible (0,45 contre 1,15
-// auparavant) : c'est elle qui décidait de la brûlure du coeur. À 1,15 la
-// matière épaisse virait au bordeaux ; ici le rouge traverse presque
-// intégralement et la masse reste vive de bout en bout. Le vert et le bleu
-// restent fortement éteints, ce qui garantit la saturation.
-// L'absorption du rouge est **nulle**. C'était elle qui noircissait le coeur :
-// toute valeur non nulle fait chuter le canal rouge dans les zones épaisses,
-// et la teinte glisse vers le bordeaux. À zéro, le rouge traverse la matière
-// sans perte quelle que soit l'épaisseur. Le vert et le bleu restent, eux,
-// fortement éteints — c'est de cet écart, et non d'une teinte peinte, que
-// naît la saturation.
-const vec3 ABSORPTION = vec3(0.0, 3.4, 4.0);
+// L'absorption du rouge est le réglage sensible. À 1,15 la matière épaisse
+// virait au bordeaux ; à 0 elle devenait un rouge plat sans profondeur. À 0,13
+// le coeur se densifie juste assez pour qu'on lise du volume, sans que la
+// teinte ne glisse.
+const vec3 ABSORPTION = vec3(0.13, 3.4, 4.0);
 
-const vec3 C_SCATTER = vec3(1.0, 0.05, 0.04);
-const vec3 C_RIM = vec3(1.0, 0.42, 0.34);
+const vec3 C_SCATTER = vec3(0.94, 0.115, 0.095);
+const vec3 C_RIM = vec3(1.0, 0.40, 0.33);
+
+/** Amplitude du relief de surface. Au-delà de 0,6, la masse se met à grésiller. */
+const float RIPPLE = 0.34;
+
+/* --- Relief de surface ----------------------------------------------------
+   La SDF donne une surface rigoureusement lisse, et c'est elle qui faisait
+   lire du caoutchouc : une bille parfaite ne ressemble à aucun liquide.
+
+   Le relief est appliqué sur la **normale** seulement, pas sur la distance. La
+   silhouette reste donc nette — ce qui est correct, la tension superficielle
+   lisse le contour d'un liquide — mais la lumière, elle, court sur des rides
+   qui se déplacent. C'est aussi bien plus économique que de perturber la SDF,
+   qui est évaluée des dizaines de fois par rayon là où la normale l'est une
+   seule fois.
+   ------------------------------------------------------------------------- */
+float hash13(vec3 p) {
+  p = fract(p * 0.3183099 + vec3(0.11, 0.17, 0.23));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float valueNoise(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f); // lissage de Hermite : pas d'arête entre cellules
+  return mix(
+    mix(mix(hash13(i), hash13(i + vec3(1.0, 0.0, 0.0)), f.x),
+        mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+    mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), f.x),
+        mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
+    f.z);
+}
+
+// Deux échelles : une houle lente qui fait couler la matière, des rides fines
+// par-dessus qui brisent les reflets. Une seule échelle donne soit un blob
+// mou, soit du grain.
+vec3 rippleNormal(vec3 p, vec3 n) {
+  vec3 slow = p * 2.6 + vec3(0.0, uTime * 0.45, uTime * 0.25);
+  vec3 fine = p * 8.5 - vec3(uTime * 0.7, 0.0, uTime * 0.4);
+
+  vec3 d =
+    vec3(valueNoise(slow), valueNoise(slow + 19.3), valueNoise(slow + 41.7)) - 0.5;
+  d += (vec3(valueNoise(fine), valueNoise(fine + 7.1), valueNoise(fine + 63.9)) - 0.5) * 0.55;
+
+  return normalize(n + d * RIPPLE);
+}
 
 // Union lissée polynomiale : en dessous de k, les deux surfaces se rejoignent
 // par un raccord continu au lieu d'une arête.
@@ -154,7 +193,11 @@ void main() {
   if (!hit) discard;
 
   vec3 p = ro + rd * t;
-  vec3 n = calcNormal(p);
+  // La normale géométrique sert à sonder l'épaisseur, la normale ridée à
+  // éclairer : perturber avant la mesure ferait rebondir l'épaisseur au rythme
+  // des rides et la masse clignoterait.
+  vec3 geoN = calcNormal(p);
+  vec3 n = rippleNormal(p, geoN);
   vec3 view = -rd;
 
   vec3 keyDir = normalize(vec3(-0.55, 0.72, 0.62));
@@ -165,7 +208,7 @@ void main() {
   float back = clamp(dot(n, backDir), 0.0, 1.0);
   float fresnel = pow(1.0 - clamp(dot(n, view), 0.0, 1.0), 3.5);
 
-  float thick = thicknessAt(p, n);
+  float thick = thicknessAt(p, geoN);
 
   // Beer-Lambert par canal. Additionner un rose sur du rouge sombre saturait le
   // canal rouge et faisait monter vert et bleu - d'où le gris. Ici la couleur
@@ -191,15 +234,18 @@ void main() {
   // Liseré de bord, seule entorse admise : il reste rouge, simplement plus clair.
   color += C_RIM * fresnel * 0.55;
 
-  // Unique point blanc de la scène, très étroit — c'est lui qui donne le
-  // vernis mouillé sans lequel la masse paraîtrait mate.
+  // Deux lobes spéculaires. Un point unique et serré est la signature du
+  // plastique ; un liquide porte une nappe brillante large, sur laquelle
+  // courent des éclats fins. Ce sont les rides qui brisent le lobe serré en
+  // une multitude de points mobiles — l'aspect mouillé vient de là.
   vec3 halfVec = normalize(keyDir + view);
-  float spec = pow(clamp(dot(n, halfVec), 0.0, 1.0), 110.0);
-  color += vec3(1.0) * spec * 0.22;
+  float ndoth = clamp(dot(n, halfVec), 0.0, 1.0);
+  color += vec3(1.0, 0.92, 0.90) * pow(ndoth, 16.0) * 0.09;
+  color += vec3(1.0) * pow(ndoth, 240.0) * 0.55;
 
   // Compression douce des hautes lumières : sans elle, l'écrêtage brutal du
   // canal rouge reproduit exactement le délavage qu'on vient de corriger.
-  color = 1.0 - exp(-color * 1.9);
+  color = 1.0 - exp(-color * 1.72);
 
   // Opacité relevée : sous 0,72, le crème de la page transparaissait et
   // délavait le rouge sur toute la périphérie.
@@ -318,6 +364,7 @@ export function BloodCells({
     const uBodies = gl.getUniformLocation(program, 'uBodies')
     const uBoundRadius = gl.getUniformLocation(program, 'uBoundRadius')
     const uPulse = gl.getUniformLocation(program, 'uPulse')
+    const uTime = gl.getUniformLocation(program, 'uTime')
 
     gl.useProgram(program)
     gl.enableVertexAttribArray(aPosition)
@@ -405,6 +452,8 @@ export function BloodCells({
     let frame = 0
     let last = performance.now()
     let lastDraw = 0
+    /** Horloge de la scène, en secondes. Alimente le défilement des rides. */
+    let elapsedSeconds = 0
     const frameInterval = 1000 / targetFps
 
     const render = (now: number) => {
@@ -412,6 +461,7 @@ export function BloodCells({
 
       const delta = Math.min((now - last) / 1000, 0.1)
       last = now
+      elapsedSeconds += delta
 
       if (!onScreen || document.hidden) return
       if (now - lastDraw < frameInterval) return
@@ -442,6 +492,7 @@ export function BloodCells({
       gl.uniform4fv(uBodies, positions)
       gl.uniform1f(uBoundRadius, boundingSphere(simulation.bodies, BLEND))
       gl.uniform1f(uPulse, simulation.pulse)
+      gl.uniform1f(uTime, elapsedSeconds)
 
       gl.clear(gl.COLOR_BUFFER_BIT)
       gl.drawArrays(gl.TRIANGLES, 0, 3)
