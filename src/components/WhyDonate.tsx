@@ -41,7 +41,7 @@ const TONE_CLASSES: Record<ImpactCard['tone'], string> = {
 const CARD_SHADOW = 'shadow-[0_12px_32px_rgba(76,43,38,0.06)]'
 
 export function WhyDonate() {
-  const cards = useReveal()
+  const cards = useReveal<HTMLDivElement>({ items: 'article' })
 
   return (
     <section id="pourquoi" className="bg-cream-100 py-20">
@@ -59,8 +59,8 @@ export function WhyDonate() {
         />
 
         <div
-          ref={cards.ref}
-          className={`reveal ${cards.visible ? 'is-visible' : ''} grid gap-4 lg:grid-cols-[1.2fr_0.9fr_0.9fr]`}
+          ref={cards}
+          className="grid gap-4 lg:grid-cols-[1.2fr_0.9fr_0.9fr]"
         >
           {/* Carte d'impact principale */}
           <article

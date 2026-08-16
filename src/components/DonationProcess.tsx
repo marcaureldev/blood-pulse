@@ -1,7 +1,8 @@
+import { useRef } from 'react'
 import { ArrowRight, ClipboardList, Clock, Coffee, Droplet, Stethoscope } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { SectionHeading } from '@/components/SectionHeading'
-import { useReveal } from '@/hooks/useReveal'
+import { gsap, useGSAP } from '@/lib/gsap'
 import { PROCESS_STEPS, TOTAL_DURATION, type StepIcon } from '@/data/process'
 
 const STEP_ICONS: Record<StepIcon, LucideIcon> = {
@@ -11,11 +12,95 @@ const STEP_ICONS: Record<StepIcon, LucideIcon> = {
   coffee: Coffee,
 }
 
+const SCROLL_PER_STEP = 320
+
 export function DonationProcess() {
-  const { ref, visible } = useReveal()
+  const section = useRef<HTMLElement>(null)
+  const track = useRef<HTMLDivElement>(null)
+
+  useGSAP(
+    () => {
+      const root = section.current
+      const steps = track.current
+      if (!root || !steps) return
+
+      const media = gsap.matchMedia()
+
+      media.add(
+        {
+          pinnable: '(min-width: 1024px) and (min-height: 760px)',
+          reduced: '(prefers-reduced-motion: reduce)',
+        },
+        (context) => {
+          const conditions = context.conditions ?? {}
+          if (conditions.reduced) return
+
+          const items = gsap.utils.toArray<HTMLElement>('li', steps)
+          if (items.length === 0) return
+
+          if (!conditions.pinnable) {
+            gsap.from(items, {
+              opacity: 0,
+              y: 28,
+              duration: 0.6,
+              ease: 'power3.out',
+              stagger: 0.15,
+              scrollTrigger: { trigger: steps, start: 'top 85%', once: true },
+            })
+            return
+          }
+
+          const line = steps.querySelector('[data-progress]')
+          const reachedColor = getComputedStyle(document.documentElement)
+            .getPropertyValue('--color-blood-500')
+            .trim()
+
+          const timeline = gsap.timeline({
+            defaults: { ease: 'none' },
+            scrollTrigger: {
+              trigger: root,
+              start: 'top top',
+              end: `+=${items.length * SCROLL_PER_STEP}`,
+              pin: true,
+              anticipatePin: 1,
+              scrub: 1,
+            },
+          })
+
+          timeline.set(line, { scaleX: 0 })
+
+          items.forEach((item, index) => {
+            const label = `etape-${index + 1}`
+
+            timeline
+              .addLabel(label, index)
+              .fromTo(
+                item,
+                { opacity: 0, y: 32 },
+                { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' },
+                label,
+              )
+              .to(line, { scaleX: (index + 1) / items.length, duration: 1 }, label)
+
+            if (reachedColor) {
+              timeline.to(
+                item.querySelector('[data-dot]'),
+                { borderColor: reachedColor, duration: 0.4 },
+                label,
+              )
+            }
+          })
+        },
+        section,
+      )
+
+      return () => media.revert()
+    },
+    { scope: section },
+  )
 
   return (
-    <section id="deroulement" className="bg-cream-50 py-20">
+    <section ref={section} id="deroulement" className="bg-cream-50 py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <SectionHeading
@@ -35,15 +120,13 @@ export function DonationProcess() {
           </p>
         </div>
 
-        <div ref={ref} className="relative">
+        <div ref={track} className="relative">
           {/* Fil conducteur, aligné sur le centre des pastilles (96px / 2). */}
           <div
             aria-hidden="true"
             className="absolute inset-x-0 top-12 hidden h-0.5 bg-cream-300 lg:block"
           >
-            <div
-              className={`h-full origin-left bg-blood-400 ${visible ? 'animate-grow-w' : 'scale-x-0'}`}
-            />
+            <div data-progress className="h-full origin-left bg-blood-400" />
           </div>
 
           <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -51,11 +134,11 @@ export function DonationProcess() {
               const Icon = STEP_ICONS[step.icon]
 
               return (
-                <li
-                  key={step.num}
-                  className={`relative`}
-                >
-                  <div className="relative z-10 mx-auto mb-4 flex h-24 w-24 flex-col items-center justify-center rounded-full border-[1.5px] border-cream-400 bg-white transition-colors duration-300 hover:border-blood-500 lg:mx-0">
+                <li key={step.num} className="relative">
+                  <div
+                    data-dot
+                    className="relative z-10 mx-auto mb-4 flex h-24 w-24 flex-col items-center justify-center rounded-full border-[1.5px] border-cream-400 bg-white lg:mx-0"
+                  >
                     <Icon className="mb-1 h-8 w-8 text-blood-500" strokeWidth={1.5} aria-hidden="true" />
                     <span className="text-xs font-semibold text-ink-400">Étape {step.num}</span>
                   </div>

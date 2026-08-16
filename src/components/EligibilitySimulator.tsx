@@ -57,10 +57,13 @@ export function EligibilitySimulator() {
 
   const firstFieldRef = useRef<HTMLInputElement | HTMLButtonElement>(null)
 
-  // Le focus suit la question : sans ça, la tabulation repartirait du haut de
-  // la page à chaque étape.
+  const previousStep = useRef(step)
+
   useEffect(() => {
-    if (status === 'form') firstFieldRef.current?.focus()
+    const changedQuestion = previousStep.current !== step
+    previousStep.current = step
+
+    if (changedQuestion && status === 'form') firstFieldRef.current?.focus()
   }, [step, status])
 
   const today = new Date().toISOString().slice(0, 10)

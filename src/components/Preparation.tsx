@@ -67,14 +67,14 @@ const PHASE_STYLES: Record<AdvicePhase['phase'], PhaseStyle> = {
 }
 
 export function Preparation() {
-  const { ref } = useReveal()
+  const cards = useReveal<HTMLDivElement>({ items: 'article' })
 
   return (
     <section
       id="preparation"
       className="bg-linear-to-b from-cream-100 to-cream-50 py-20"
     >
-      <div ref={ref} className="mx-auto max-w-7xl px-5 sm:px-8">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeading
           eyebrow="Préparation au don"
           title={
@@ -85,7 +85,7 @@ export function Preparation() {
           description="Trois moments, trois listes simples. Suivez-les et votre don se passera en douceur."
         />
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <div ref={cards} className="mt-12 grid gap-6 md:grid-cols-3">
           {ADVICE.map((phase, index) => {
             const style = PHASE_STYLES[phase.phase]
             const PhaseIcon = style.icon

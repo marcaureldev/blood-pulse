@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Droplet, Info, TrendingUp } from "lucide-react";
 import { SectionHeading } from "@/components/SectionHeading";
-import { useReveal } from "@/hooks/useReveal";
+import { gsap, useGSAP } from "@/lib/gsap";
 import {
   BLOOD_GROUP_FACTS,
   BLOOD_RESERVES,
@@ -11,7 +11,49 @@ import {
 } from "@/data/bloodReserves";
 
 export function BloodReserves() {
-  const { ref, visible } = useReveal();
+  const gauges = useRef<HTMLDivElement>(null);
+
+  // Les huit jauges montent en cascade, puis se remplissent.
+  //
+  // Le remplissage passe par `scaleX` et non par `width` : une largeur animée
+  // force un recalcul de mise en page à chaque image, une transformation non.
+  // La largeur finale reste posée en style inline, donc juste dans le DOM même
+  // si l'animation ne joue jamais.
+  useGSAP(
+    () => {
+      const root = gauges.current;
+      if (!root) return;
+
+      const media = gsap.matchMedia();
+
+      media.add(
+        "(prefers-reduced-motion: no-preference)",
+        () => {
+          const timeline = gsap.timeline({
+            scrollTrigger: { trigger: root, start: "top 85%", once: true },
+          });
+
+          timeline
+            .from("button", {
+              opacity: 0,
+              y: 24,
+              duration: 0.5,
+              ease: "power3.out",
+              stagger: 0.06,
+            })
+            .from(
+              "[data-bar]",
+              { scaleX: 0, duration: 0.8, ease: "power2.out", stagger: 0.06 },
+              0.2,
+            );
+        },
+        gauges,
+      );
+
+      return () => media.revert();
+    },
+    { scope: gauges },
+  );
   const [selected, setSelected] = useState<BloodGroup | null>(null);
   const detailRef = useRef<HTMLDivElement>(null);
 
@@ -28,10 +70,7 @@ export function BloodReserves() {
       id="reserves"
       className="bg-linear-to-b from-cream-50 to-cream-100 py-20"
     >
-      <div
-        ref={ref}
-        className={`reveal ${visible ? "is-visible" : ""} mx-auto max-w-7xl px-5 sm:px-8`}
-      >
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeading
           eyebrow="État des réserves"
           title={
@@ -56,8 +95,8 @@ export function BloodReserves() {
 
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
           {/* Jauges */}
-          <div className="space-y-3">
-            {BLOOD_RESERVES.map((reserve, index) => {
+          <div ref={gauges} className="space-y-3">
+            {BLOOD_RESERVES.map((reserve) => {
               const meta = RESERVE_META[reserve.level];
               const isSelected = selected === reserve.group;
 
@@ -67,10 +106,9 @@ export function BloodReserves() {
                   type="button"
                   onClick={() => setSelected(isSelected ? null : reserve.group)}
                   aria-pressed={isSelected}
-                  className={`w-full rounded-2xl border-[1.5px] bg-white p-5 text-left transition-all duration-300 hover:border-blood-400 ${
+                  className={`w-full rounded-2xl border-[1.5px] bg-white p-5 text-left transition-colors duration-300 hover:border-blood-400 ${
                     isSelected ? "border-blood-500" : "border-cream-200"
-                  } ${visible ? "animate-fade-up" : "reveal"}`}
-                  style={{ animationDelay: `${index * 0.08}s` }}
+                  }`}
                 >
                   <div className="mb-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -90,10 +128,9 @@ export function BloodReserves() {
 
                   <div className="h-2 overflow-hidden rounded-full bg-cream-200">
                     <div
-                      className={`h-full rounded-full transition-all duration-1000 ease-out ${meta.bar}`}
-                      style={{
-                        width: visible ? `${reserve.percentage}%` : "0%",
-                      }}
+                      data-bar
+                      className={`h-full origin-left rounded-full ${meta.bar}`}
+                      style={{ width: `${reserve.percentage}%` }}
                     />
                   </div>
 
