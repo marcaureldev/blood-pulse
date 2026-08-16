@@ -14,6 +14,9 @@ const STEP_ICONS: Record<StepIcon, LucideIcon> = {
 
 const SCROLL_PER_STEP = 320
 
+
+const OUTRO_SPAN = 0.6
+
 export function DonationProcess() {
   const section = useRef<HTMLElement>(null)
   const track = useRef<HTMLDivElement>(null)
@@ -40,7 +43,7 @@ export function DonationProcess() {
 
           if (!conditions.pinnable) {
             gsap.from(items, {
-              opacity: 0,
+              autoAlpha: 0,
               y: 28,
               duration: 0.6,
               ease: 'power3.out',
@@ -51,16 +54,19 @@ export function DonationProcess() {
           }
 
           const line = steps.querySelector('[data-progress]')
+          const outro = root.querySelector('[data-outro]')
           const reachedColor = getComputedStyle(document.documentElement)
             .getPropertyValue('--color-blood-500')
             .trim()
+
+          const total = items.length + OUTRO_SPAN
 
           const timeline = gsap.timeline({
             defaults: { ease: 'none' },
             scrollTrigger: {
               trigger: root,
               start: 'top top',
-              end: `+=${items.length * SCROLL_PER_STEP}`,
+              end: `+=${total * SCROLL_PER_STEP}`,
               pin: true,
               anticipatePin: 1,
               scrub: 1,
@@ -76,8 +82,8 @@ export function DonationProcess() {
               .addLabel(label, index)
               .fromTo(
                 item,
-                { opacity: 0, y: 32 },
-                { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' },
+                { autoAlpha: 0, y: 32 },
+                { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out' },
                 label,
               )
               .to(line, { scaleX: (index + 1) / items.length, duration: 1 }, label)
@@ -90,6 +96,12 @@ export function DonationProcess() {
               )
             }
           })
+          
+          timeline.from(
+            outro,
+            { autoAlpha: 0, y: 20, duration: OUTRO_SPAN, ease: 'power2.out' },
+            items.length,
+          )
         },
         section,
       )
@@ -121,10 +133,9 @@ export function DonationProcess() {
         </div>
 
         <div ref={track} className="relative">
-          {/* Fil conducteur, aligné sur le centre des pastilles (96px / 2). */}
           <div
             aria-hidden="true"
-            className="absolute inset-x-0 top-12 hidden h-0.5 bg-cream-300 lg:block"
+            className="absolute inset-x-0 top-12 hidden h-0.5 lg:block"
           >
             <div data-progress className="h-full origin-left bg-blood-400" />
           </div>
@@ -159,7 +170,7 @@ export function DonationProcess() {
           </ol>
         </div>
 
-        <div className="mt-12 text-center">
+        <div data-outro className="mt-12 text-center">
           <a
             href="#preparation"
             className="group inline-flex items-center gap-2 font-semibold text-blood-600 transition-colors hover:text-blood-700"

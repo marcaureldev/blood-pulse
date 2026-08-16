@@ -35,7 +35,7 @@ export function BloodReserves() {
 
           timeline
             .from("button", {
-              opacity: 0,
+              autoAlpha: 0,
               y: 24,
               duration: 0.5,
               ease: "power3.out",

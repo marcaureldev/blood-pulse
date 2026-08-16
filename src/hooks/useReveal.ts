@@ -55,16 +55,11 @@ export function useReveal<T extends HTMLElement = HTMLDivElement>({
 
       const media = gsap.matchMedia()
 
-      // Seule la branche « pas de préférence » crée quelque chose. Sous
-      // `reduce`, rien n'est joué : aucune opacité de départ n'est posée, donc
-      // le contenu s'affiche directement. Si la préférence système bascule en
-      // cours de session, matchMedia annule la branche devenue inactive et
-      // rétablit l'état d'origine.
       media.add(
         '(prefers-reduced-motion: no-preference)',
         () => {
           gsap.from(items ?? root, {
-            opacity: 0,
+            autoAlpha: 0,
             y,
             duration: 0.75,
             ease: 'power3.out',
