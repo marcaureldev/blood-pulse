@@ -1,9 +1,26 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { MapPin, RotateCw, Search, SlidersHorizontal, TriangleAlert, X } from 'lucide-react'
 import { SectionHeading } from '@/components/SectionHeading'
-import { BeninDotMap } from '@/components/BeninDotMap'
+import type { MapFocus } from '@/components/AfricaFlatMap'
 import { CenterDrawer } from '@/components/CenterDrawer'
+import { useNearViewport } from '@/hooks/useNearViewport'
 import { ScrollTrigger } from '@/lib/gsap'
+
+/**
+ * La carte est chargée à la demande.
+ *
+ * three.js et react-three-fiber pèsent plus que tout le reste de la page ;
+ * les mettre dans le bundle principal ferait payer la carte à quelqu'un qui
+ * ne descend jamais jusqu'ici. L'import ne part qu'à l'approche de la section.
+ */
+const AfricaFlatMap = lazy(() =>
+  import('@/components/AfricaFlatMap').then((module) => ({ default: module.AfricaFlatMap })),
+)
+
+/** Réserve la place de la carte : sans elle, son arrivée décalerait la page. */
+function MapPlaceholder() {
+  return <div className="aspect-90/82 w-full animate-pulse rounded-2xl bg-ink-900/60" />
+}
 import {
   CENTERS,
   CENTER_KIND_LABELS,
@@ -75,6 +92,7 @@ const PILL_BASE =
 
 export function CentersDirectory() {
   const now = useNow()
+  const [panel, nearMap] = useNearViewport<HTMLDivElement>()
 
   const [query, setQuery] = useState('')
   const [city, setCity] = useState<string | null>(null)
@@ -158,6 +176,28 @@ export function CentersDirectory() {
 
   const hasFilters =
     query !== '' || city !== null || kind !== 'all' || donationType !== 'all' || openOnly
+
+  /**
+   * Cadre visé par la carte.
+   *
+   * Sans filtre, on reste sur la vue continentale. Dès qu'une recherche
+   * restreint la liste, la caméra vole jusqu'à englober les centres retenus —
+   * et revient d'elle-même quand on efface. Une recherche sans résultat ramène
+   * aussi à la vue large : il n'y a rien à cadrer, et l'état vide le dit.
+   */
+  const focus = useMemo<MapFocus | null>(() => {
+    if (!hasFilters || filtered.length === 0) return null
+
+    const lons = filtered.map((center) => center.coordinates.lng)
+    const lats = filtered.map((center) => center.coordinates.lat)
+
+    return {
+      lonMin: Math.min(...lons),
+      lonMax: Math.max(...lons),
+      latMin: Math.min(...lats),
+      latMax: Math.max(...lats),
+    }
+  }, [filtered, hasFilters])
 
   const resetFilters = () => {
     setQuery('')
@@ -302,14 +342,21 @@ export function CentersDirectory() {
         {status === 'error' ? (
           <DirectoryError onRetry={() => setAttempt((value) => value + 1)} />
         ) : (
-          <div className="mx-auto max-w-full rounded-3xl bg-ink-950 p-5 sm:p-8">
-            <div className="grid items-stretch gap-8 lg:grid-cols-[minmax(0,32rem)_1fr]">
-              <BeninDotMap
-                cities={cityPins}
-                activeCity={city}
-                onSelectCity={setCity}
-                busy={busy}
-              />
+          <div ref={panel} className="mx-auto max-w-full rounded-3xl bg-ink-950 overflow-hidden p-5">
+            <div className="grid items-stretch gap-8 lg:grid-cols-[1.5fr_0.5fr]">
+              {nearMap ? (
+                <Suspense fallback={<MapPlaceholder />}>
+                  <AfricaFlatMap
+                    cities={cityPins}
+                    activeCity={city}
+                    onSelectCity={setCity}
+                    focus={focus}
+                    busy={busy}
+                  />
+                </Suspense>
+              ) : (
+                <MapPlaceholder />
+              )}
 
               <div className="lg:relative">
                 <div className="flex flex-col lg:absolute lg:inset-0">
