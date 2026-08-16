@@ -1,10 +1,17 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
-import { MapPin, RotateCw, Search, SlidersHorizontal, TriangleAlert, X } from 'lucide-react'
-import { SectionHeading } from '@/components/SectionHeading'
-import type { MapFocus } from '@/components/AfricaFlatMap'
-import { CenterDrawer } from '@/components/CenterDrawer'
-import { useNearViewport } from '@/hooks/useNearViewport'
-import { ScrollTrigger } from '@/lib/gsap'
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import {
+  MapPin,
+  RotateCw,
+  Search,
+  SlidersHorizontal,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import { SectionHeading } from "@/components/SectionHeading";
+import type { MapFocus } from "@/components/AfricaFlatMap";
+import { CenterDrawer } from "@/components/CenterDrawer";
+import { useNearViewport } from "@/hooks/useNearViewport";
+import { ScrollTrigger } from "@/lib/gsap";
 
 /**
  * La carte est chargée à la demande.
@@ -14,12 +21,16 @@ import { ScrollTrigger } from '@/lib/gsap'
  * ne descend jamais jusqu'ici. L'import ne part qu'à l'approche de la section.
  */
 const AfricaFlatMap = lazy(() =>
-  import('@/components/AfricaFlatMap').then((module) => ({ default: module.AfricaFlatMap })),
-)
+  import("@/components/AfricaFlatMap").then((module) => ({
+    default: module.AfricaFlatMap,
+  })),
+);
 
 /** Réserve la place de la carte : sans elle, son arrivée décalerait la page. */
 function MapPlaceholder() {
-  return <div className="aspect-90/82 w-full animate-pulse rounded-2xl bg-ink-900/60" />
+  return (
+    <div className="aspect-90/82 w-full animate-pulse rounded-2xl bg-ink-900/60" />
+  );
 }
 import {
   CENTERS,
@@ -31,34 +42,35 @@ import {
   type Center,
   type CenterKind,
   type DonationType,
-} from '@/data/centers'
+} from "@/data/centers";
+import { FillButton } from "./FillButton";
 
-type KindFilter = 'all' | CenterKind
-type TypeFilter = 'all' | DonationType
+type KindFilter = "all" | CenterKind;
+type TypeFilter = "all" | DonationType;
 
 const KIND_FILTERS: { value: KindFilter; label: string }[] = [
-  { value: 'all', label: 'Tous' },
-  { value: 'fixe', label: 'Centres fixes' },
-  { value: 'collecte', label: 'Collectes' },
-]
+  { value: "all", label: "Tous" },
+  { value: "fixe", label: "Centres fixes" },
+  { value: "collecte", label: "Collectes" },
+];
 
 const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
-  { value: 'all', label: 'Tous les dons' },
-  { value: 'sang-total', label: 'Sang total' },
-  { value: 'plasma', label: 'Plasma' },
-  { value: 'plaquettes', label: 'Plaquettes' },
-]
+  { value: "all", label: "Tous les dons" },
+  { value: "sang-total", label: "Sang total" },
+  { value: "plasma", label: "Plasma" },
+  { value: "plaquettes", label: "Plaquettes" },
+];
 
 /** Horloge partagée, rafraîchie chaque minute : le statut d'ouverture doit vivre. */
 function useNow() {
-  const [now, setNow] = useState(() => new Date())
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000)
-    return () => window.clearInterval(timer)
-  }, [])
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
-  return now
+  return now;
 }
 
 /**
@@ -74,81 +86,88 @@ function useNow() {
 function loadCenters(): Promise<Center[]> {
   return new Promise((resolve, reject) => {
     window.setTimeout(() => {
-      const forced = new URLSearchParams(window.location.search).get('centres') === 'erreur'
+      const forced =
+        new URLSearchParams(window.location.search).get("centres") === "erreur";
 
-      if (forced) reject(new Error("L'annuaire n'a pas pu être chargé."))
-      else resolve(CENTERS)
-    }, 550)
-  })
+      if (forced) reject(new Error("L'annuaire n'a pas pu être chargé."));
+      else resolve(CENTERS);
+    }, 550);
+  });
 }
 
 /** Toutes les villes d'accueil, avec leurs coordonnées. Géographie figée. */
-const CITY_COORDINATES = [...new Map(CENTERS.map((c) => [c.city, c.coordinates])).entries()].map(
-  ([city, coordinates]) => ({ city, ...coordinates }),
-)
+const CITY_COORDINATES = [
+  ...new Map(CENTERS.map((c) => [c.city, c.coordinates])).entries(),
+].map(([city, coordinates]) => ({ city, ...coordinates }));
 
 const PILL_BASE =
-  'rounded-full px-3.5 py-2 text-xs font-semibold transition-colors focus-visible:outline-2'
+  "rounded-full px-3.5 py-2 text-xs font-semibold transition-colors focus-visible:outline-2";
 
 export function CentersDirectory() {
-  const now = useNow()
-  const [panel, nearMap] = useNearViewport<HTMLDivElement>()
+  const now = useNow();
+  const [panel, nearMap] = useNearViewport<HTMLDivElement>();
 
-  const [query, setQuery] = useState('')
-  const [city, setCity] = useState<string | null>(null)
-  const [kind, setKind] = useState<KindFilter>('all')
-  const [donationType, setDonationType] = useState<TypeFilter>('all')
-  const [openOnly, setOpenOnly] = useState(false)
-  const [searching, setSearching] = useState(false)
-  const [selected, setSelected] = useState<Center | null>(null)
+  const [query, setQuery] = useState("");
+  const [city, setCity] = useState<string | null>(null);
+  const [kind, setKind] = useState<KindFilter>("all");
+  const [donationType, setDonationType] = useState<TypeFilter>("all");
+  const [openOnly, setOpenOnly] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<Center | null>(null);
 
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [centers, setCenters] = useState<Center[]>([])
-  const [attempt, setAttempt] = useState(0)
+  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
+  const [centers, setCenters] = useState<Center[]>([]);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    let cancelled = false
-    setStatus('loading')
+    let cancelled = false;
+    setStatus("loading");
 
     loadCenters()
       .then((data) => {
-        if (cancelled) return
-        setCenters(data)
-        setStatus('ready')
+        if (cancelled) return;
+        setCenters(data);
+        setStatus("ready");
       })
       .catch(() => {
-        if (!cancelled) setStatus('error')
-      })
+        if (!cancelled) setStatus("error");
+      });
 
     return () => {
-      cancelled = true
-    }
-  }, [attempt])
+      cancelled = true;
+    };
+  }, [attempt]);
 
   // La hauteur de la section change entre squelette et annuaire : les repères
   // de scroll des sections suivantes doivent être recalculés.
   useEffect(() => {
-    ScrollTrigger.refresh()
-  }, [status])
+    ScrollTrigger.refresh();
+  }, [status]);
 
-  const [deferredQuery, setDeferredQuery] = useState('')
+  const [deferredQuery, setDeferredQuery] = useState("");
   useEffect(() => {
-    if (query === deferredQuery) return
+    if (query === deferredQuery) return;
 
-    setSearching(true)
+    setSearching(true);
     const timer = window.setTimeout(() => {
-      setDeferredQuery(query)
-      setSearching(false)
-    }, 250)
+      setDeferredQuery(query);
+      setSearching(false);
+    }, 250);
 
-    return () => window.clearTimeout(timer)
-  }, [query, deferredQuery])
+    return () => window.clearTimeout(timer);
+  }, [query, deferredQuery]);
 
   const filtered = useMemo(
     () =>
-      filterCenters(centers, { query: deferredQuery, city, kind, donationType, openOnly }, now),
+      filterCenters(
+        centers,
+        { query: deferredQuery, city, kind, donationType, openOnly },
+        now,
+      ),
     [centers, deferredQuery, city, kind, donationType, openOnly, now],
-  )
+  );
 
   /**
    * Compteurs de la carte, calculés sans le filtre « ville ».
@@ -162,20 +181,27 @@ export function CentersDirectory() {
       centers,
       { query: deferredQuery, city: null, kind, donationType, openOnly },
       now,
-    )
-    const counts = new Map<string, number>()
+    );
+    const counts = new Map<string, number>();
 
     for (const center of reachable) {
-      counts.set(center.city, (counts.get(center.city) ?? 0) + 1)
+      counts.set(center.city, (counts.get(center.city) ?? 0) + 1);
     }
 
-    return CITY_COORDINATES.map((entry) => ({ ...entry, count: counts.get(entry.city) ?? 0 }))
-  }, [centers, deferredQuery, kind, donationType, openOnly, now])
+    return CITY_COORDINATES.map((entry) => ({
+      ...entry,
+      count: counts.get(entry.city) ?? 0,
+    }));
+  }, [centers, deferredQuery, kind, donationType, openOnly, now]);
 
-  const busy = status === 'loading' || searching
+  const busy = status === "loading" || searching;
 
   const hasFilters =
-    query !== '' || city !== null || kind !== 'all' || donationType !== 'all' || openOnly
+    query !== "" ||
+    city !== null ||
+    kind !== "all" ||
+    donationType !== "all" ||
+    openOnly;
 
   /**
    * Cadre visé par la carte.
@@ -186,27 +212,27 @@ export function CentersDirectory() {
    * aussi à la vue large : il n'y a rien à cadrer, et l'état vide le dit.
    */
   const focus = useMemo<MapFocus | null>(() => {
-    if (!hasFilters || filtered.length === 0) return null
+    if (!hasFilters || filtered.length === 0) return null;
 
-    const lons = filtered.map((center) => center.coordinates.lng)
-    const lats = filtered.map((center) => center.coordinates.lat)
+    const lons = filtered.map((center) => center.coordinates.lng);
+    const lats = filtered.map((center) => center.coordinates.lat);
 
     return {
       lonMin: Math.min(...lons),
       lonMax: Math.max(...lons),
       latMin: Math.min(...lats),
       latMax: Math.max(...lats),
-    }
-  }, [filtered, hasFilters])
+    };
+  }, [filtered, hasFilters]);
 
   const resetFilters = () => {
-    setQuery('')
-    setDeferredQuery('')
-    setCity(null)
-    setKind('all')
-    setDonationType('all')
-    setOpenOnly(false)
-  }
+    setQuery("");
+    setDeferredQuery("");
+    setCity(null);
+    setKind("all");
+    setDonationType("all");
+    setOpenOnly(false);
+  };
 
   return (
     <section id="centres" className="bg-white py-20 md:py-28">
@@ -246,7 +272,7 @@ export function CentersDirectory() {
             </label>
             <select
               id="filtre-ville"
-              value={city ?? ''}
+              value={city ?? ""}
               onChange={(event) => setCity(event.target.value || null)}
               className="rounded-xl border border-cream-200 bg-white px-3 py-3 text-sm font-medium text-ink-800 focus:outline-none focus:ring focus:ring-blood-500 sm:w-52"
             >
@@ -260,7 +286,10 @@ export function CentersDirectory() {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-2">
-            <SlidersHorizontal className="mr-1 h-4 w-4 text-ink-400" aria-hidden="true" />
+            <SlidersHorizontal
+              className="mr-1 h-4 w-4 text-ink-400"
+              aria-hidden="true"
+            />
 
             {KIND_FILTERS.map((filter) => (
               <button
@@ -270,8 +299,8 @@ export function CentersDirectory() {
                 aria-pressed={kind === filter.value}
                 className={`${PILL_BASE} ${
                   kind === filter.value
-                    ? 'bg-blood-100 text-blood-700'
-                    : 'text-ink-500 hover:bg-cream-100'
+                    ? "bg-blood-100 text-blood-700"
+                    : "text-ink-500 hover:bg-cream-100"
                 }`}
               >
                 {filter.label}
@@ -288,8 +317,8 @@ export function CentersDirectory() {
                 aria-pressed={donationType === filter.value}
                 className={`${PILL_BASE} ${
                   donationType === filter.value
-                    ? 'bg-blood-100 text-blood-700'
-                    : 'text-ink-500 hover:bg-cream-100'
+                    ? "bg-blood-100 text-blood-700"
+                    : "text-ink-500 hover:bg-cream-100"
                 }`}
               >
                 {filter.label}
@@ -303,12 +332,14 @@ export function CentersDirectory() {
               onClick={() => setOpenOnly((value) => !value)}
               aria-pressed={openOnly}
               className={`${PILL_BASE} inline-flex items-center gap-1.5 ${
-                openOnly ? 'bg-sage-100 text-sage-700' : 'text-ink-500 hover:bg-cream-100'
+                openOnly
+                  ? "bg-sage-100 text-sage-700"
+                  : "text-ink-500 hover:bg-cream-100"
               }`}
             >
               <span
                 aria-hidden="true"
-                className={`h-1.5 w-1.5 rounded-full ${openOnly ? 'bg-sage-500' : 'bg-ink-300'}`}
+                className={`h-1.5 w-1.5 rounded-full ${openOnly ? "bg-sage-500" : "bg-ink-300"}`}
               />
               Ouvert maintenant
             </button>
@@ -328,21 +359,24 @@ export function CentersDirectory() {
 
         {/* Compteur — annoncé aux lecteurs d'écran à chaque changement. */}
         <p aria-live="polite" className="mb-4 text-sm text-ink-500">
-          {status === 'loading'
-            ? 'Chargement de l’annuaire…'
-            : status === 'error'
-              ? 'L’annuaire est momentanément indisponible.'
+          {status === "loading"
+            ? "Chargement de l’annuaire…"
+            : status === "error"
+              ? "L’annuaire est momentanément indisponible."
               : searching
-                ? 'Recherche en cours…'
-                : `${filtered.length} centre${filtered.length > 1 ? 's' : ''} ${
-                    filtered.length > 1 ? 'correspondent' : 'correspond'
+                ? "Recherche en cours…"
+                : `${filtered.length} centre${filtered.length > 1 ? "s" : ""} ${
+                    filtered.length > 1 ? "correspondent" : "correspond"
                   } à votre recherche`}
         </p>
 
-        {status === 'error' ? (
+        {status === "error" ? (
           <DirectoryError onRetry={() => setAttempt((value) => value + 1)} />
         ) : (
-          <div ref={panel} className="mx-auto max-w-full rounded-3xl bg-ink-950 overflow-hidden p-5">
+          <div
+            ref={panel}
+            className="mx-auto max-w-full rounded-3xl bg-ink-950 overflow-hidden p-5"
+          >
             <div className="grid items-stretch gap-8 lg:grid-cols-[1.5fr_0.5fr]">
               {nearMap ? (
                 <Suspense fallback={<MapPlaceholder />}>
@@ -362,7 +396,7 @@ export function CentersDirectory() {
                 <div className="flex flex-col lg:absolute lg:inset-0">
                   <div className="mb-3 flex items-baseline justify-between gap-3">
                     <h3 className="font-display text-lg font-semibold tracking-tight text-cream-50">
-                      {city ?? 'Tout le pays'}
+                      {city ?? "Tout le pays"}
                     </h3>
 
                     {city && (
@@ -387,21 +421,24 @@ export function CentersDirectory() {
                     </ul>
                   ) : filtered.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-ink-700 px-5 py-10 text-center">
-                      <MapPin className="mx-auto mb-3 h-8 w-8 text-ink-500" strokeWidth={1.2} />
+                      <MapPin
+                        className="mx-auto mb-3 h-8 w-8 text-ink-500"
+                        strokeWidth={1.2}
+                      />
                       <p className="font-display text-base font-semibold text-cream-100">
                         Aucun centre ne correspond
                       </p>
                       <p className="mx-auto mt-2 max-w-60 text-[0.78rem] leading-relaxed text-ink-300">
-                        Essayez une autre ville, un autre type de don, ou sans la contrainte
-                        d’horaire.
+                        Essayez une autre ville, un autre type de don, ou sans
+                        la contrainte d’horaire.
                       </p>
-                      <button
-                        type="button"
+                      <FillButton
+                        variant="onDark"
                         onClick={resetFilters}
-                        className="mt-5 rounded-full bg-blood-600 px-4 py-2 text-[0.78rem] font-semibold text-white transition-colors hover:bg-blood-700"
+                        className="mt-5"
                       >
                         Réinitialiser les filtres
-                      </button>
+                      </FillButton>
                     </div>
                   ) : (
                     <ul className="space-y-2.5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
@@ -422,9 +459,13 @@ export function CentersDirectory() {
         )}
       </div>
 
-      <CenterDrawer center={selected} now={now} onClose={() => setSelected(null)} />
+      <CenterDrawer
+        center={selected}
+        now={now}
+        onClose={() => setSelected(null)}
+      />
     </section>
-  )
+  );
 }
 
 function DirectoryError({ onRetry }: { onRetry: () => void }) {
@@ -433,23 +474,26 @@ function DirectoryError({ onRetry }: { onRetry: () => void }) {
       role="alert"
       className="mx-auto max-w-5xl rounded-3xl border border-blood-200/70 bg-blood-50 px-6 py-14 text-center"
     >
-      <TriangleAlert className="mx-auto mb-3 h-10 w-10 text-blood-500" strokeWidth={1.3} />
+      <TriangleAlert
+        className="mx-auto mb-3 h-10 w-10 text-blood-500"
+        strokeWidth={1.3}
+      />
       <h3 className="font-display text-lg font-semibold text-ink-900">
         L’annuaire n’a pas pu être chargé
       </h3>
       <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-600">
-        La liste des centres est momentanément indisponible. Vos filtres sont conservés.
+        La liste des centres est momentanément indisponible. Vos filtres sont
+        conservés.
       </p>
-      <button
-        type="button"
+      <FillButton
         onClick={onRetry}
-        className="mt-5 inline-flex items-center gap-2 rounded-full bg-blood-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blood-700"
+        icon={<RotateCw className="h-4 w-4" />}
+        className="mt-5"
       >
-        <RotateCw className="h-4 w-4" aria-hidden="true" />
         Réessayer
-      </button>
+      </FillButton>
     </div>
-  )
+  );
 }
 
 function CenterRow({
@@ -457,11 +501,11 @@ function CenterRow({
   now,
   onSelect,
 }: {
-  center: Center
-  now: Date
-  onSelect: () => void
+  center: Center;
+  now: Date;
+  onSelect: () => void;
 }) {
-  const state = getOpenState(center, now)
+  const state = getOpenState(center, now);
 
   return (
     <li>
@@ -478,14 +522,14 @@ function CenterRow({
 
           <span
             className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap pt-0.5 text-[0.68rem] font-medium ${
-              state.open ? 'text-sage-300' : 'text-ink-400'
+              state.open ? "text-sage-300" : "text-ink-400"
             }`}
           >
             <span
               aria-hidden="true"
-              className={`h-1.5 w-1.5 rounded-full ${state.open ? 'bg-sage-400' : 'bg-ink-600'}`}
+              className={`h-1.5 w-1.5 rounded-full ${state.open ? "bg-sage-400" : "bg-ink-600"}`}
             />
-            {state.open ? 'Ouvert' : 'Fermé'}
+            {state.open ? "Ouvert" : "Fermé"}
           </span>
         </div>
 
@@ -493,14 +537,16 @@ function CenterRow({
           {CENTER_KIND_LABELS[center.kind]} · {center.city}
         </p>
 
-        <p className={`mt-1 text-[0.7rem] ${state.open ? 'text-sage-300' : 'text-ink-400'}`}>
+        <p
+          className={`mt-1 text-[0.7rem] ${state.open ? "text-sage-300" : "text-ink-400"}`}
+        >
           {state.open
             ? `Ferme à ${state.closesAt}`
             : state.opensAt
               ? `Ouvre ${WEEKDAY_LABELS[state.opensDay!].toLowerCase()} à ${state.opensAt}`
-              : 'Horaires à confirmer'}
+              : "Horaires à confirmer"}
         </p>
       </button>
     </li>
-  )
+  );
 }

@@ -1,36 +1,37 @@
-import { useRef } from 'react'
-import { ArrowRight } from 'lucide-react'
-import { gsap, useGSAP } from '@/lib/gsap'
+import { useRef } from "react";
+import { ArrowRight } from "lucide-react";
+import { gsap, useGSAP } from "@/lib/gsap";
+import { FillButton } from "./FillButton";
 
 export function FinalCta() {
-  const root = useRef<HTMLElement>(null)
+  const root = useRef<HTMLElement>(null);
 
   useGSAP(
     () => {
-      const media = gsap.matchMedia()
+      const media = gsap.matchMedia();
 
       media.add(
-        '(prefers-reduced-motion: no-preference)',
+        "(prefers-reduced-motion: no-preference)",
         () => {
-          gsap.to('[data-orb]', {
+          gsap.to("[data-orb]", {
             // Valeur par cible : le premier anneau remonte, le second descend.
             yPercent: (index: number) => (index === 0 ? -16 : 12),
-            ease: 'none',
+            ease: "none",
             scrollTrigger: {
               trigger: root.current,
-              start: 'top bottom',
-              end: 'bottom top',
+              start: "top bottom",
+              end: "bottom top",
               scrub: 1,
             },
-          })
+          });
         },
         root,
-      )
+      );
 
-      return () => media.revert()
+      return () => media.revert();
     },
     { scope: root },
-  )
+  );
 
   return (
     <section
@@ -67,17 +68,16 @@ export function FinalCta() {
           Faites le premier pas. Le test prend deux minutes.
         </p>
 
-        <a
+        <FillButton
           href="#eligibilite"
-          className="group mt-8 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 font-semibold text-blood-700 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blood-950/25"
+          variant="invert"
+          className="mt-8"
+          icon={<ArrowRight className="w-4 h-4" />}
+          iconPosition="end"
         >
           Vérifier mon éligibilité
-          <ArrowRight
-            className="h-4 w-4 transition-transform group-hover:translate-x-1"
-            aria-hidden="true"
-          />
-        </a>
+        </FillButton>
       </div>
     </section>
-  )
+  );
 }

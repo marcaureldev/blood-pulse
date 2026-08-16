@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { FillButton } from '@/components/FillButton'
 import { gsap, useGSAP } from '@/lib/gsap'
 import {
   ArrowLeft,
@@ -510,13 +511,14 @@ function Panel({
           <span />
         )}
 
-        <button
+        <FillButton
           type="submit"
-          className="inline-flex items-center gap-2 rounded-full bg-blood-600 px-6 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blood-700"
+          variant="onDark"
+          icon={<ArrowRight className="h-4 w-4" />}
+          iconPosition="end"
         >
           {index === TOTAL_STEPS - 1 ? 'Voir mon résultat' : 'Continuer'}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </button>
+        </FillButton>
       </div>
     </div>
   )
@@ -629,13 +631,14 @@ function Verdict({
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           {eligible && (
-            <a
+            <FillButton
               href="#centres"
-              className="inline-flex items-center gap-2 rounded-full bg-blood-600 px-6 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blood-700"
+              variant="onDark"
+              icon={<ArrowRight className="h-4 w-4" />}
+              iconPosition="end"
             >
               Trouver un centre
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </a>
+            </FillButton>
           )}
 
           <button
