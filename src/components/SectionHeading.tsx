@@ -16,16 +16,16 @@ export function SectionHeading({
   stacked = false,
   children,
 }: SectionHeadingProps) {
-  const { ref, visible } = useReveal();
+  const ref = useReveal<HTMLDivElement>();
 
   return (
     <div
       ref={ref}
-      className={`reveal ${visible ? "is-visible" : ""} ${
+      className={
         stacked
           ? "max-w-2xl"
           : "mb-8 md:mb-12 md:flex md:items-end md:justify-between md:gap-10"
-      }`}
+      }
     >
       <div>
         <p className="mb-5 flex items-center gap-2.5 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-blood-600">

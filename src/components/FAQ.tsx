@@ -5,12 +5,12 @@ import { useReveal } from '@/hooks/useReveal'
 import { FAQ_ITEMS } from '@/data/faq'
 
 export function FAQ() {
-  const { ref, visible } = useReveal()
+  const list = useReveal<HTMLDivElement>({ items: '[data-reveal]' })
   const [open, setOpen] = useState<number | null>(0)
 
   return (
     <section id="faq" className="bg-cream-50 py-20">
-      <div ref={ref} className={`reveal ${visible ? 'is-visible' : ''} mx-auto max-w-5xl px-5`}>
+      <div className="mx-auto max-w-5xl px-5">
         <SectionHeading
           eyebrow="FAQ & idées reçues"
           title={
@@ -25,7 +25,7 @@ export function FAQ() {
           description="La peur du don vient souvent de l'inconnu. Voici les réponses franches aux questions les plus courantes."
         />
 
-        <div className="mt-10 space-y-3">
+        <div ref={list} className="mt-10 space-y-3">
           {FAQ_ITEMS.map((item, index) => {
             const isOpen = open === index
             const panelId = `faq-reponse-${index}`
@@ -33,10 +33,10 @@ export function FAQ() {
             return (
               <div
                 key={item.q}
-                className={`overflow-hidden rounded-2xl border bg-white transition-all duration-300 ${
+                data-reveal
+                className={`overflow-hidden rounded-2xl border bg-white transition-[border-color,box-shadow] duration-300 ${
                   isOpen ? 'border-blood-200 shadow-sm' : 'border-cream-200 hover:border-cream-300'
-                } ${visible ? 'animate-fade-up' : 'reveal'}`}
-                style={{ animationDelay: `${index * 0.05}s` }}
+                }`}
               >
                 <h3>
                   <button

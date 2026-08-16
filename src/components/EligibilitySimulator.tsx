@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { gsap, useGSAP } from '@/lib/gsap'
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,42 +26,146 @@ import {
 
 const TOTAL_STEPS = 4
 
+/**
+ * Accent propre à chaque question, résolu en dur plutôt qu'en `var()` : GSAP
+ * interpole des couleurs, pas des références CSS.
+ *
+ * La suite réchauffe à mesure qu'on approche du verdict — vert de gorge, sable,
+ * ambre, puis le rouge de la marque sur la dernière question, celle qui ouvre
+ * sur la réponse. Le parcours se lit donc aussi à la couleur.
+ */
+const STEP_ACCENTS = ['#9fbfa8', '#c9a96e', '#f5b73e', '#e64d4d']
+
+/**
+ * Fond de la section pour chaque question.
+ */
+const SECTION_TINTS = ['#082008', '#251a08', '#2e1408', '#370808']
+
+/**
+ * Pose d'une carte selon sa profondeur dans la pile.
+ *
+ * `depth` vaut 0 pour la question courante, 1 pour celle qu'on vient de
+ * quitter, et ainsi de suite ; une valeur négative désigne une question pas
+ * encore atteinte, qui attend sous la pile.
+ *
+ * Les cartes en retrait restent visibles et légèrement décalées vers le haut :
+ * c'est ce qui donne le sentiment d'empilement, et surtout ce qui montre d'où
+ * l'on vient. `transformOrigin` est posé en haut pour qu'elles reculent vers
+ * leur bord supérieur au lieu de se contracter vers leur centre.
+ */
+function poseFor(depth: number) {
+  if (depth < 0) return { y: 64, scale: 0.97, autoAlpha: 0, zIndex: 0 }
+  if (depth === 0) return { y: 0, scale: 1, autoAlpha: 1, zIndex: 40 }
+  if (depth === 1) return { y: -20, scale: 0.95, autoAlpha: 0.7, zIndex: 30 }
+  if (depth === 2) return { y: -36, scale: 0.9, autoAlpha: 0.4, zIndex: 20 }
+  return { y: -48, scale: 0.86, autoAlpha: 0, zIndex: 10 }
+}
+
 /** Bornes de saisie, volontairement larges : elles écartent l'absurde, pas l'inéligible. */
 const AGE_BOUNDS = { min: 1, max: 120 }
 const WEIGHT_BOUNDS = { min: 20, max: 300 }
 
 const FIELD =
-  'w-full rounded-xl border bg-ink-950 px-4 py-3.5 text-cream-50 transition-colors placeholder:text-ink-500'
+  'w-full rounded-xl border bg-ink-950 px-4 py-3.5 text-cream-50 transition-colors placeholder:text-ink-500 focus:outline-none focus:ring-1 focus:ring-blood-500'
+
+
+const PANEL = 'rounded-3xl border border-ink-800 bg-ink-900 p-6 sm:p-8'
+
+const CARD = `absolute inset-0 flex flex-col overflow-hidden ${PANEL}`
 
 /**
  * Simulateur d'éligibilité, en parcours de quatre questions.
- *
- * Le parcours pose de vraies valeurs — âge, poids, date — et non des tranches.
- * Le proto de référence demandait « moins de 18 ans / 18 à 70 ans », ce qui le
- * rendait structurellement incapable de calculer une date de prochaine
- * éligibilité, alors que le brief l'exige.
- *
- * Tout le calcul vit dans `evaluateEligibility`, en fonction pure. Ce composant
- * ne fait que collecter, valider la saisie et présenter le verdict.
  */
 export function EligibilitySimulator() {
   const [step, setStep] = useState(0)
   const [age, setAge] = useState('')
   const [weight, setWeight] = useState('')
   const [sex, setSex] = useState<Sex | null>(null)
-  const [neverDonated, setNeverDonated] = useState(false)
+
+  const [donatedBefore, setDonatedBefore] = useState<boolean | null>(null)
   const [lastDonation, setLastDonation] = useState('')
 
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<'form' | 'loading' | 'done'>('form')
   const [result, setResult] = useState<EligibilityResult | null>(null)
 
-  const firstFieldRef = useRef<HTMLInputElement | HTMLButtonElement>(null)
+  /**
+   * Les quatre questions coexistent dans le DOM, donc une référence unique
+   * ne suffit plus : la dernière montée écraserait les précédentes.
+   */
+  const fieldRefs = useRef<Array<HTMLInputElement | HTMLButtonElement | null>>([])
+  const setFieldRef =
+    (index: number) => (element: HTMLInputElement | HTMLButtonElement | null) => {
+      fieldRefs.current[index] = element
+    }
 
-  // Le focus suit la question : sans ça, la tabulation repartirait du haut de
-  // la page à chaque étape.
+  const stack = useRef<HTMLDivElement>(null)
+  const section = useRef<HTMLElement>(null)
+
+  /** Vrai tant que le système demande un mouvement réduit. */
+  const reducedMotion = useRef(false)
+
+  useGSAP(() => {
+    const media = gsap.matchMedia()
+    media.add('(prefers-reduced-motion: reduce)', () => {
+      reducedMotion.current = true
+      return () => {
+        reducedMotion.current = false
+      }
+    })
+    return () => media.revert()
+  }, [])
+
+  /**
+   * L'empilement, piloté par l'étape.
+   *
+   * Chaque carte reçoit la pose correspondant à sa distance à la question
+   * courante, toutes au même instant de la timeline : elles se déplacent
+   * ensemble, la sortante recule pendant que l'entrante se pose dessus.
+   *
+   * Le calcul part de `step` plutôt que d'une timeline à étiquettes parcourue
+   * par `tweenTo` : le retour arrière, le saut et le redémarrage tombent alors
+   * juste sans code supplémentaire, puisqu'une pose ne dépend que de l'état
+   * courant, jamais du chemin parcouru pour y arriver.
+   *
+   * `overwrite: 'auto'` protège du clic rapide : un nouveau mouvement tue les
+   * propriétés encore en cours sur les mêmes cartes au lieu de lutter contre.
+   */
+  useGSAP(
+    () => {
+      const root = stack.current
+      if (!root) return
+
+      const cards = gsap.utils.toArray<HTMLElement>('[data-card]', root)
+      if (cards.length === 0) return
+
+      const instant = root.dataset.posed !== 'true'
+      root.dataset.posed = 'true'
+
+      const duration = instant || reducedMotion.current ? 0 : 0.55
+
+      gsap.set(cards, { transformOrigin: 'center top' })
+
+      const timeline = gsap.timeline({
+        defaults: { duration, ease: 'power3.out', overwrite: 'auto' },
+      })
+
+      cards.forEach((element, index) => {
+        timeline.to(element, poseFor(step - index), 0)
+      })
+
+      timeline.to(section.current, { backgroundColor: SECTION_TINTS[step] }, 0)
+    },
+    { dependencies: [step, status], scope: stack },
+  )
+
+  const previousStep = useRef(step)
+
   useEffect(() => {
-    if (status === 'form') firstFieldRef.current?.focus()
+    const changedQuestion = previousStep.current !== step
+    previousStep.current = step
+
+    if (changedQuestion && status === 'form') fieldRefs.current[step]?.focus()
   }, [step, status])
 
   const today = new Date().toISOString().slice(0, 10)
@@ -85,7 +190,11 @@ export function EligibilitySimulator() {
 
     if (step === 2 && sex === null) return 'Sélectionnez une réponse pour continuer.'
 
-    if (step === 3 && !neverDonated) {
+    if (step === 3) {
+      if (donatedBefore === null) return 'Indiquez si vous avez déjà donné.'
+    }
+
+    if (step === 3 && donatedBefore) {
       if (!lastDonation) return 'Indiquez la date de votre dernier don, ou cochez « je n’ai jamais donné ».'
       if (lastDonation > today) return 'Cette date est dans le futur.'
     }
@@ -108,8 +217,6 @@ export function EligibilitySimulator() {
       return
     }
 
-    // Court délai assumé : le verdict doit se lire comme une réponse, pas comme
-    // un changement d'affichage instantané.
     setStatus('loading')
     window.setTimeout(() => {
       setResult(
@@ -118,7 +225,7 @@ export function EligibilitySimulator() {
             age: Number(age),
             weightKg: Number(weight),
             sex: sex ?? 'male',
-            lastDonationDate: neverDonated ? null : lastDonation,
+            lastDonationDate: donatedBefore ? lastDonation : null,
           },
           new Date(),
         ),
@@ -137,7 +244,7 @@ export function EligibilitySimulator() {
     setAge('')
     setWeight('')
     setSex(null)
-    setNeverDonated(false)
+    setDonatedBefore(null)
     setLastDonation('')
     setError(null)
     setResult(null)
@@ -145,7 +252,11 @@ export function EligibilitySimulator() {
   }
 
   return (
-    <section id="eligibilite" className="bg-ink-950 py-20 text-cream-100 md:py-28">
+    <section
+      ref={section}
+      id="eligibilite"
+      className="bg-ink-950 py-20 text-cream-100 md:py-28"
+    >
       <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
         {/* Colonne d'intro */}
         <div className="lg:pt-6">
@@ -179,56 +290,34 @@ export function EligibilitySimulator() {
           </ul>
         </div>
 
-        {/* Carte du parcours */}
-        <div className="rounded-3xl border border-ink-800 bg-ink-900/60 p-6 sm:p-8">
+        <div>
           {status === 'done' && result ? (
-            <Verdict result={result} onRestart={restart} />
+            <div className={`min-h-120 ${PANEL}`}>
+              <Verdict result={result} onRestart={restart} />
+            </div>
           ) : status === 'loading' ? (
             <div
               role="status"
-              className="flex min-h-96 flex-col items-center justify-center text-center"
+              className={`flex min-h-120 flex-col items-center justify-center text-center ${PANEL}`}
             >
               <Loader2 className="h-8 w-8 animate-spin text-blood-400" aria-hidden="true" />
               <p className="mt-4 text-sm text-ink-300">Analyse de vos réponses…</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} noValidate className="flex min-h-96 flex-col">
-              {/* Progression */}
-              <div className="mb-8">
-                <div className="mb-2.5 flex items-center justify-between text-[0.72rem] font-medium">
-                  <span aria-live="polite" className="text-ink-300">
-                    Question <strong className="text-cream-50">{step + 1}</strong> sur {TOTAL_STEPS}
-                  </span>
-                  <span className="text-ink-500">{Math.round((step / TOTAL_STEPS) * 100)} %</span>
-                </div>
-                <div
-                  role="progressbar"
-                  aria-valuenow={step + 1}
-                  aria-valuemin={1}
-                  aria-valuemax={TOTAL_STEPS}
-                  aria-label="Progression du test"
-                  className="h-1 overflow-hidden rounded-full bg-ink-800"
-                >
-                  <div
-                    className="h-full rounded-full bg-blood-500 transition-[width] duration-500 ease-out"
-                    style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex-1">
-                {step === 0 && (
+            <form onSubmit={handleSubmit} noValidate>
+              <div ref={stack} className={`relative min-h-120`}>
+                <Panel index={0} active={step === 0} onBack={back}>
                   <Question
                     label="Quel âge avez-vous ?"
                     help={`Le don est ouvert de ${MIN_AGE} à ${MAX_AGE} ans.`}
                     htmlFor="sim-age"
-                    error={error}
+                    error={step === 0 ? error : null}
                   >
                     <div className="flex items-center gap-3">
                       <input
-                        ref={firstFieldRef as React.RefObject<HTMLInputElement>}
+                        ref={setFieldRef(0)}
                         id="sim-age"
-                        type="number"
+                        type="text"
                         inputMode="numeric"
                         value={age}
                         onChange={(event) => setAge(event.target.value)}
@@ -240,20 +329,20 @@ export function EligibilitySimulator() {
                       <span className="shrink-0 text-sm text-ink-400">ans</span>
                     </div>
                   </Question>
-                )}
+                </Panel>
 
-                {step === 1 && (
+                <Panel index={1} active={step === 1} onBack={back}>
                   <Question
                     label="Quel est votre poids ?"
                     help={`Le minimum requis est de ${MIN_WEIGHT_KG} kg.`}
                     htmlFor="sim-weight"
-                    error={error}
+                    error={step === 1 ? error : null}
                   >
                     <div className="flex items-center gap-3">
                       <input
-                        ref={firstFieldRef as React.RefObject<HTMLInputElement>}
+                        ref={setFieldRef(1)}
                         id="sim-weight"
-                        type="number"
+                        type="text"
                         inputMode="numeric"
                         value={weight}
                         onChange={(event) => setWeight(event.target.value)}
@@ -265,23 +354,19 @@ export function EligibilitySimulator() {
                       <span className="shrink-0 text-sm text-ink-400">kg</span>
                     </div>
                   </Question>
-                )}
+                </Panel>
 
-                {step === 2 && (
+                <Panel index={2} active={step === 2} onBack={back}>
                   <Question
                     label="Vous êtes :"
                     help={`Le délai entre deux dons diffère : ${MIN_DELAY_MONTHS.male} mois pour un homme, ${MIN_DELAY_MONTHS.female} mois pour une femme.`}
-                    error={error}
+                    error={step === 2 ? error : null}
                   >
                     <div className="grid gap-3 sm:grid-cols-2">
                       {(['male', 'female'] as const).map((value, index) => (
                         <button
                           key={value}
-                          ref={
-                            index === 0
-                              ? (firstFieldRef as React.RefObject<HTMLButtonElement>)
-                              : undefined
-                          }
+                          ref={index === 0 ? setFieldRef(2) : undefined}
                           type="button"
                           onClick={() => {
                             setSex(value)
@@ -299,74 +384,141 @@ export function EligibilitySimulator() {
                       ))}
                     </div>
                   </Question>
-                )}
+                </Panel>
 
-                {step === 3 && (
+                <Panel index={3} active={step === 3} onBack={back}>
                   <Question
-                    label="Quand avez-vous donné pour la dernière fois ?"
-                    help="Si c'est votre premier don, cochez la case."
-                    htmlFor="sim-date"
-                    error={error}
+                    label="Avez-vous déjà donné votre sang ?"
+                    help="Cette date sert à calculer votre prochain don possible."
+                    error={step === 3 ? error : null}
                   >
-                    <input
-                      ref={firstFieldRef as React.RefObject<HTMLInputElement>}
-                      id="sim-date"
-                      type="date"
-                      max={today}
-                      value={lastDonation}
-                      disabled={neverDonated}
-                      onChange={(event) => setLastDonation(event.target.value)}
-                      aria-invalid={error !== null}
-                      aria-describedby={error ? 'sim-error' : undefined}
-                      className={`${FIELD} disabled:opacity-40 ${
-                        error ? 'border-blood-500' : 'border-ink-700'
-                      }`}
-                    />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {[
+                        { value: false, label: "C'est mon premier don" },
+                        { value: true, label: "J'ai déjà donné" },
+                      ].map((choice, index) => (
+                        <button
+                          key={choice.label}
+                          ref={index === 0 ? setFieldRef(3) : undefined}
+                          type="button"
+                          onClick={() => {
+                            setDonatedBefore(choice.value)
+                            if (!choice.value) setLastDonation('')
+                            setError(null)
+                          }}
+                          aria-pressed={donatedBefore === choice.value}
+                          className={`rounded-xl border px-4 py-4 text-left font-medium transition-colors ${
+                            donatedBefore === choice.value
+                              ? 'border-blood-500 bg-blood-950/40 text-cream-50'
+                              : 'border-ink-700 text-ink-300 hover:border-ink-600 hover:bg-ink-800'
+                          }`}
+                        >
+                          {choice.label}
+                        </button>
+                      ))}
+                    </div>
 
-                    <label className="mt-4 flex cursor-pointer items-center gap-3 text-sm text-ink-300">
-                      <input
-                        type="checkbox"
-                        checked={neverDonated}
-                        onChange={(event) => {
-                          setNeverDonated(event.target.checked)
-                          setError(null)
-                        }}
-                        className="h-4 w-4 accent-blood-500"
-                      />
-                      Je n'ai jamais donné mon sang
-                    </label>
+                    {/* La date n'apparaît que lorsqu'elle a un sens. */}
+                    {donatedBefore === true && (
+                      <div className="mt-5">
+                        <label
+                          htmlFor="sim-date"
+                          className="mb-2 block text-[0.82rem] font-medium text-ink-300"
+                        >
+                          Date de votre dernier don
+                        </label>
+                        <input
+                          id="sim-date"
+                          type="date"
+                          max={today}
+                          value={lastDonation}
+                          onChange={(event) => setLastDonation(event.target.value)}
+                          aria-invalid={error !== null}
+                          aria-describedby={error ? 'sim-error' : undefined}
+                          // L'icône native du calendrier est sombre, donc
+                          // invisible sur ce fond. `invert` la retourne en clair.
+                          className={`${FIELD} [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:invert ${
+                            error ? 'border-blood-500' : 'border-ink-700'
+                          }`}
+                        />
+                      </div>
+                    )}
                   </Question>
-                )}
-              </div>
-
-              {/* Navigation */}
-              <div className="mt-8 flex items-center justify-between gap-4">
-                {step > 0 ? (
-                  <button
-                    type="button"
-                    onClick={back}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-ink-400 transition-colors hover:text-cream-100"
-                  >
-                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                    Retour
-                  </button>
-                ) : (
-                  <span />
-                )}
-
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-full bg-blood-600 px-6 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blood-700"
-                >
-                  {step === TOTAL_STEPS - 1 ? 'Voir mon résultat' : 'Continuer'}
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </button>
+                </Panel>
               </div>
             </form>
           )}
         </div>
       </div>
     </section>
+  )
+}
+
+
+function Panel({
+  index,
+  active,
+  onBack,
+  children,
+}: {
+  index: number
+  active: boolean
+  onBack: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div data-card className={CARD} inert={!active}>
+      <div className="mb-8">
+        <div className="mb-2.5 flex items-center justify-between text-[0.72rem] font-medium">
+          <span className="text-ink-300">
+            Question <strong className="text-cream-50">{index + 1}</strong> sur {TOTAL_STEPS}
+          </span>
+          <span className="text-ink-500">{Math.round((index / TOTAL_STEPS) * 100)} %</span>
+        </div>
+
+        <div
+          role="progressbar"
+          aria-valuenow={index + 1}
+          aria-valuemin={1}
+          aria-valuemax={TOTAL_STEPS}
+          aria-label="Progression du test"
+          className="h-1 overflow-hidden rounded-full bg-ink-800"
+        >
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${((index + 1) / TOTAL_STEPS) * 100}%`,
+              backgroundColor: STEP_ACCENTS[index],
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col justify-center">{children}</div>
+
+      <div className="mt-8 flex items-center justify-between gap-4">
+        {index > 0 ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-2 text-sm font-medium text-ink-400 transition-colors hover:text-cream-100"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Retour
+          </button>
+        ) : (
+          <span />
+        )}
+
+        <button
+          type="submit"
+          className="inline-flex items-center gap-2 rounded-full bg-blood-600 px-6 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blood-700"
+        >
+          {index === TOTAL_STEPS - 1 ? 'Voir mon résultat' : 'Continuer'}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
   )
 }
 

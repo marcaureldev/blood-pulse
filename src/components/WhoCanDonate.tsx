@@ -42,7 +42,7 @@ const TILE_TONES = [
 ];
 
 export function WhoCanDonate() {
-  const grid = useReveal();
+  const grid = useReveal<HTMLDivElement>({ items: "article" });
 
   return (
     <section id="qui-peut-donner" className="bg-cream-50 py-12">
@@ -51,18 +51,18 @@ export function WhoCanDonate() {
           eyebrow="Qui peut donner"
           title={
             <>
-              Vous êtes peut-être{" "}
-              <span className="fx-marker [--ink:var(--color-blood-300)]">
-                déjà éligible.
-              </span>
+              Vous êtes peut
+              <p className="">
+              être <span className="sm:inline fx-marker [--ink:var(--color-blood-300)]">éligible.</span>
+              </p>
             </>
           }
           description="Les règles sont là pour vous protéger. Dans la majorité des cas, être en bonne santé suffit."
         />
 
         <div
-          ref={grid.ref}
-          className={`reveal ${grid.visible ? "is-visible" : ""} mt-12 grid border-l border-t border-cream-200 sm:grid-cols-2`}
+          ref={grid}
+          className="mt-12 grid border-l border-t border-cream-200 sm:grid-cols-2"
         >
           {CRITERIA.map(({ value, unit, title, body }, index) => (
             <article
