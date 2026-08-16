@@ -1,42 +1,53 @@
 /**
- * Simulation de gouttes de sang.
+ * Simulation d'un amas de gouttes de sang, exécutée sur CPU.
  *
- * Le modèle n'est pas celui de corps rigides qui s'entrechoquent, mais celui
- * d'un liquide : les gouttes se pénètrent, se retiennent entre elles et
- * amortissent mutuellement leur vitesse. Trois forces de paire décrivent ça -
- * une répulsion douce à courte portée qui empêche l'effondrement, une cohésion
- * à moyenne portée qui tient la masse ensemble, et une viscosité qui rapproche
- * les vitesses des voisines. C'est la viscosité qui donne au mouvement son
- * épaisseur ; sans elle, on retombe sur des billes.
+ * Le modèle est celui d'un liquide, non de corps rigides : les gouttes se
+ * pénètrent, se retiennent entre elles et amortissent mutuellement leur
+ * vitesse. Trois forces de paire suffisent à le décrire — une répulsion à
+ * courte portée qui empêche l'effondrement, une cohésion à moyenne portée qui
+ * tient la masse ensemble, et une viscosité qui rapproche les vitesses des
+ * voisines. C'est la viscosité qui donne au mouvement son épaisseur ; sans
+ * elle, on retombe sur des billes.
  *
- * L'intégration se fait à pas fixe : sans ça, un onglet qui reprend le focus
- * après une pause produit un pas de temps énorme et la simulation explose.
+ * S'y ajoutent trois sources d'agitation appliquées goutte par goutte : un
+ * battement cardiaque, une ébullition haute fréquence et une dérive de fond.
+ * Le curseur, lui, agit en dissipateur : il écarte la matière et relâche
+ * localement sa cohésion.
+ *
+ * L'intégration se fait à pas fixe. Un onglet qui reprend le focus après une
+ * mise en veille livre un delta de plusieurs secondes ; intégré d'un bloc, il
+ * fait diverger la simulation.
+ *
+ * Le rendu correspondant vit dans `BloodCells.tsx` et ne fait que dessiner
+ * l'état produit ici.
  */
 
+/** Nombre de gouttes. Fixe la taille du tampon d'uniforms côté shader. */
 export const CELL_COUNT = 12
+
 /** Pas d'intégration, en secondes. 120 Hz : stable sans coûter cher. */
 const FIXED_STEP = 1 / 120
 
-/** Au-delà, on abandonne le retard accumulé plutôt que de rattraper à l'infini. */
+/** Retard maximal rattrapé en une frame, en secondes. Au-delà, on l'abandonne. */
 const MAX_ACCUMULATED = 0.25
 
 /**
- * Molette d'intensité globale de l'agitation. 1 = réglage de référence.
+ * Molette d'intensité globale de l'agitation, 1 valant le réglage de référence.
  *
  * Elle multiplie les trois forces d'agitation **et** le plafond de vitesse, et
- * il faut les tenir ensemble : monter la turbulence seule fait buter les
- * gouttes contre le plafond, elles y filent alors toutes à la même vitesse
- * exacte et le mouvement devient uniforme — précisément l'inverse de l'effet
+ * les deux doivent rester solidaires : monter la turbulence seule fait buter
+ * les gouttes contre le plafond, où elles filent toutes à la même vitesse
+ * exacte — le mouvement devient alors uniforme, soit l'inverse de l'effet
  * recherché. La rigidité de paroi suit pour la même raison : sans elle, la
  * périphérie traverse la paroi souple et retombe sur le clamp dur, qui rabote
  * la silhouette en cercle.
  *
- * Au-delà de 4 environ, le gain ne se voit plus : l'amas est contraint par le
- * rayon de la paroi, pas par les forces, et l'énergie supplémentaire ne fait
- * que le presser plus fort contre la limite.
+ * Au-delà de 4 environ, le gain cesse de se voir : l'amas est alors contraint
+ * par le rayon de la paroi et non par les forces.
  */
 export const INTENSITY = 0.5
 
+/** Raideur du ressort qui ramène chaque goutte vers le centre de la scène. */
 const ATTRACTOR_STRENGTH = 2.1
 
 /* --- Battement et ébullition ---------------------------------------------- */
@@ -54,12 +65,15 @@ const PULSE_RECOIL = 1.1
 const BOIL_STRENGTH = 60 * INTENSITY
 
 /**
- * Enveloppe cardiaque sur un cycle, dans [0, 1].
+ * Enveloppe cardiaque sur un cycle.
  *
- * Deux pics — le « toum » franc puis le « ta » plus bref — suivis d'un long
- * temps mort. Une sinusoïde donnerait un halètement régulier de métronome ;
- * c'est l'asymétrie et le silence entre deux battements qui font lire un cœur
- * plutôt qu'une respiration.
+ * Deux gaussiennes — le « toum » franc puis le « ta » plus bref — suivies d'un
+ * long temps mort. Une sinusoïde donnerait le halètement régulier d'un
+ * métronome ; c'est l'asymétrie des deux pics et le silence qui les sépare qui
+ * font lire un cœur plutôt qu'une respiration.
+ *
+ * @param elapsed Temps de scène écoulé, en secondes.
+ * @returns Amplitude du battement dans `[0, 1]`, 1 au pic systolique.
  */
 export function heartbeat(elapsed: number): number {
   const phase = (elapsed % BEAT_PERIOD) / BEAT_PERIOD
@@ -69,9 +83,9 @@ export function heartbeat(elapsed: number): number {
 }
 
 /**
- * Amortissement global par seconde. Plus marqué que pour des corps solides :
- * un liquide visqueux dissipe vite. La dérive entretenue compense pour que la
- * masse ne se fige jamais complètement.
+ * Fraction de vitesse conservée après une seconde. Plus marquée que pour des
+ * corps solides : un liquide visqueux dissipe vite. La dérive entretenue
+ * compense, de sorte que la masse ne se fige jamais complètement.
  */
 const DAMPING_PER_SECOND = 0.80
 
@@ -82,77 +96,87 @@ const DRIFT_STRENGTH = 7.5 * INTENSITY
 const REFERENCE_RADIUS = 0.26
 
 /**
- * Distance d'équilibre entre deux gouttes, en fraction de la somme des rayons.
- * En dessous de 1, elles se chevauchent en permanence - c'est ce recouvrement
- * qui laisse le lissage du shader les fondre en une seule masse.
+ * Distance d'équilibre entre deux gouttes, en fraction de la somme de leurs
+ * rayons. En dessous de 1, elles se chevauchent en permanence — et c'est ce
+ * recouvrement qui laisse le lissage du shader les fondre en une seule masse.
  */
 const REST_OVERLAP = 0.82
 
 /** Portée de la cohésion, toujours en fraction de la somme des rayons. */
 const COHESION_RANGE = 1.15
 
+/** Raideur de la répulsion, active en deçà de la distance d'équilibre. */
 const REPULSION = 90
+
+/** Intensité de la cohésion, active au-delà de la distance d'équilibre. */
 const COHESION = 4.0
 
 /** Amortissement de la vitesse relative entre voisines. Le terme « visqueux ». */
-const VISCOSITY =  3
+const VISCOSITY = 3
 
+/* --- Curseur --------------------------------------------------------------- */
+
+/** Rayon d'influence du curseur, en unités de scène. */
 const POINTER_RADIUS = 2.2
 
 /**
- * Le curseur est un dissipateur, pas un pousseur.
+ * Force d'écartement radial exercée par le curseur.
  *
- * La version précédente le traitait comme un obstacle : répulsion en 1/d² à 14,5
- * plus une traînée dans le sens du déplacement. La matière fuyait le pointeur,
- * ce qui se lisait comme un choc.
- *
- * Ici il **calme** l'agitation locale — battement et ébullition sont atténués
- * sous le curseur — et il écarte doucement la masse. La dérive de fond, elle,
- * n'est jamais touchée : c'est ce qui garantit que les gouttes continuent de
- * bouger même là où l'activité est retombée.
+ * Elle ne suffit pas à elle seule : pousser une matière cohésive revient à
+ * lutter contre un rappel qui la ramène aussitôt. C'est le relâchement des
+ * liens ({@link POINTER_UNBIND}) qui rend la dispersion visible, la poussée ne
+ * fait qu'ouvrir le vide une fois les liens rompus.
  */
 const POINTER_SPREAD = 80
 
 /**
- * Part d'agitation retirée sous le curseur. Volontairement nulle : le curseur
- * disperse dans l'espace, il n'endort pas. Les gouttes écartées gardent toute
- * leur activité, et c'est la cohésion qui les rassemble une fois le curseur
- * parti. Laissé en constante pour pouvoir rétablir un amortissement local.
+ * Part d'agitation retirée sous le curseur, dans `[0, 1]`.
+ *
+ * Nulle par choix : le curseur disperse dans l'espace, il n'endort pas. Les
+ * gouttes écartées gardent toute leur activité et la cohésion les rassemble une
+ * fois le curseur parti. Monter cette valeur ferait retomber le bouillonnement
+ * là où passe le pointeur.
  */
 const POINTER_CALM = 0
 
 /** Part de cohésion rompue sous le curseur. C'est le vrai levier de dispersion. */
 const POINTER_UNBIND = 0.95
 
+/* --- Bornes du volume ------------------------------------------------------ */
+
 /**
- * Bornes du volume. La contrainte sur XY est **radiale**, pas par axe : avec des
- * bornes cubiques, un corps coincé dans un coin respecte chaque axe tout en se
- * retrouvant à une distance hypot(b, b) du centre - soit 41 % plus loin que la
- * limite voulue, donc hors cadre.
+ * Rayon du cylindre qui contient l'amas. La contrainte sur XY est **radiale**
+ * et non par axe : avec des bornes carrées, une goutte coincée dans un coin
+ * respecte chaque axe tout en se retrouvant à `hypot(b, b)` du centre, soit
+ * 41 % plus loin que la limite voulue — donc hors cadre.
  */
 const BOUNDS_RADIUS = 0.85
+
+/** Demi-hauteur sur l'axe de profondeur. */
 const BOUNDS_Z = 0.45
 
 /**
- * Paroi souple : fraction du rayon à partir de laquelle le rappel se lève.
+ * Fraction du rayon à partir de laquelle le rappel de paroi se lève.
  *
- * Le clamp seul plaquait les gouttes exactement sur le cercle — l'amas étant
- * naturellement plus large que la borne, la périphérie y glissait en permanence
- * et le contour extérieur se lisait comme un arc de cercle taillé. Une force
- * qui monte en carré avant la limite freine la goutte au lieu de la coller, et
- * la silhouette reste irrégulière. Le clamp subsiste derrière, en dernier
- * recours.
+ * L'amas étant naturellement plus large que la borne, un clamp seul plaquerait
+ * sa périphérie exactement sur le cercle et le contour extérieur se lirait
+ * comme un arc taillé. Une force qui monte en carré avant la limite freine la
+ * goutte au lieu de la coller, et la silhouette reste irrégulière. Le clamp
+ * subsiste derrière, en dernier recours.
  */
 const WALL_SOFT_START = 0.72
+
+/** Raideur du rappel de paroi souple. */
 const WALL_STIFFNESS = 120 * INTENSITY
 
 /**
  * Plafond de vitesse. Il ne doit rattraper que les valeurs aberrantes : dès
  * qu'une part notable des gouttes s'y colle, elles avancent toutes à la même
- * vitesse exacte et le mouvement devient uniforme - l'inverse d'un fluide.
+ * vitesse exacte et le mouvement devient uniforme — l'inverse d'un fluide.
  */
 const MAX_SPEED = 16 * INTENSITY
 
+/** Une goutte de l'amas, dans le repère de la scène. */
 export type Body = {
   x: number
   y: number
@@ -165,22 +189,25 @@ export type Body = {
   mass: number
   /** Décalage de phase de la dérive : chaque goutte suit sa propre trajectoire. */
   phase: number
-  /** Emprise du curseur sur cette goutte au pas courant, dans [0, 1]. */
+  /** Emprise du curseur sur cette goutte au pas courant, dans `[0, 1]`. */
   grip: number
 }
 
+/** Curseur projeté dans le plan `z = 0` de la scène. */
 export type PointerState = {
-  /** Position du curseur projetée dans le plan z = 0 de la scène. */
   x: number
   y: number
   /** Vitesse du curseur dans ce même plan, en unités de scène par seconde. */
   vx: number
   vy: number
-  /** 0 quand le curseur est absent : la force s'éteint en douceur. */
+  /** 0 quand le curseur est absent : la force s'éteint alors en douceur. */
   weight: number
 }
 
-/** Générateur déterministe : la scène s'ouvre toujours dans le même état. */
+/**
+ * Générateur pseudo-aléatoire déterministe (congruence linéaire).
+ * La scène s'ouvre ainsi toujours dans le même état.
+ */
 function makeRandom(seed: number) {
   let state = seed >>> 0
   return () => {
@@ -189,15 +216,16 @@ function makeRandom(seed: number) {
   }
 }
 
+/** Distribue les gouttes sur une sphère creuse, avec quelques petites en marge. */
 function createBodies(): Body[] {
   const random = makeRandom(0x9e3779b9)
   const bodies: Body[] = []
 
   for (let i = 0; i < CELL_COUNT; i++) {
-    // Quelques gouttes plus petites, qui se détachent en périphérie de la masse.
+    // Les dernières sont plus petites : elles se détachent en périphérie.
     const isSmall = i >= CELL_COUNT - 5
 
-    // Répartition initiale sur une sphère, pour éviter que tout parte du centre.
+    // Distribution sphérique, pour éviter que tout parte du centre.
     const theta = random() * Math.PI * 2
     const phi = Math.acos(2 * random() - 1)
     const distance = 0.3 + random() * 0.45
@@ -221,10 +249,19 @@ function createBodies(): Body[] {
 }
 
 /**
- * Interactions de paire. Un seul parcours des 120 paires applique les trois
- * forces : le profil est répulsif en dessous de la distance d'équilibre, puis
- * attractif jusqu'à la portée de cohésion, et la viscosité s'applique partout
- * dans cette portée en pondérant par la proximité.
+ * Applique les trois forces de paire en un seul parcours des couples.
+ *
+ * Le profil de force est répulsif en deçà de la distance d'équilibre, attractif
+ * au-delà jusqu'à la portée de cohésion. La viscosité, elle, s'applique partout
+ * dans cette portée, pondérée par la proximité.
+ *
+ * Les gouttes sous le curseur voient leur cohésion et leur viscosité céder,
+ * jamais leur répulsion : elles se séparent réellement, mais ne se traversent
+ * pas.
+ *
+ * Coût quadratique, négligeable au nombre de gouttes en jeu.
+ *
+ * @param dt Pas d'intégration, en secondes.
  */
 function resolvePairs(bodies: Body[], dt: number) {
   for (let i = 0; i < bodies.length; i++) {
@@ -249,11 +286,7 @@ function resolvePairs(bodies: Body[], dt: number) {
       const ny = dy / distance
       const nz = dz / distance
 
-      // Le curseur délie le liquide. La cohésion et la viscosité cèdent là où
-      // il passe, la répulsion non : les gouttes se séparent réellement au lieu
-      // de lutter contre un rappel qui les ramène aussitôt — mais elles ne se
-      // traversent jamais. C'est ce relâchement, et non la poussée, qui rend la
-      // dispersion visible.
+      /** Tenue du lien entre les deux gouttes : 1 au repos, ~0 sous le curseur. */
       const bond = 1 - Math.max(a.grip, b.grip) * POINTER_UNBIND
 
       // Positif = les deux gouttes se rapprochent, négatif = elles s'écartent.
@@ -276,7 +309,7 @@ function resolvePairs(bodies: Body[], dt: number) {
       b.vz -= nz * accelB
 
       // Viscosité : chaque goutte est tirée vers la vitesse de sa voisine.
-      // Pondérée par la proximité, elle s'annule à la portée de cohésion.
+      // La pondération par la proximité l'annule à la portée de cohésion.
       const weight = (1 - distance / range) * VISCOSITY * bond * dt
       const relativeX = b.vx - a.vx
       const relativeY = b.vy - a.vy
@@ -292,11 +325,18 @@ function resolvePairs(bodies: Body[], dt: number) {
   }
 }
 
+/**
+ * Avance la simulation d'un pas fixe : forces de paire, puis forces
+ * individuelles, intégration, contraintes de volume et verrou du barycentre.
+ *
+ * @param dt Pas d'intégration, en secondes.
+ * @param elapsed Temps de scène écoulé, qui pilote battement, dérive et ébullition.
+ */
 function integrate(bodies: Body[], pointer: PointerState, dt: number, elapsed: number) {
   const damp = Math.pow(DAMPING_PER_SECOND, dt)
 
-  // L'emprise du curseur est calculée avant les paires : resolvePairs en a
-  // besoin pour savoir où relâcher la cohésion.
+  // L'emprise du curseur se calcule avant les paires, qui en ont besoin pour
+  // savoir où relâcher la cohésion.
   for (const body of bodies) {
     body.grip = 0
     if (pointer.weight > 0.001) {
@@ -314,32 +354,26 @@ function integrate(bodies: Body[], pointer: PointerState, dt: number, elapsed: n
   for (let i = 0; i < bodies.length; i++) {
     const body = bodies[i]
 
+    // Écartement radial depuis le curseur. Le plancher sur la distance évite
+    // l'impulsion infinie quand une goutte passe pile dessous.
     const grip = body.grip
     if (grip > 0) {
       const dx = body.x - pointer.x
       const dy = body.y - pointer.y
       const distance = Math.hypot(dx, dy)
-      {
-
-        // Écartement doux, radial depuis le curseur. Le plancher sur la
-        // distance évite l'impulsion infinie quand une goutte passe pile
-        // dessous.
-        const inv = 1 / Math.max(distance, 0.14)
-        const spread = POINTER_SPREAD * grip * dt
-        body.vx += dx * inv * spread
-        body.vy += dy * inv * spread
-      }
+      const inv = 1 / Math.max(distance, 0.14)
+      const spread = POINTER_SPREAD * grip * dt
+      body.vx += dx * inv * spread
+      body.vy += dy * inv * spread
     }
 
-    /**
-     * Facteur d'agitation. Il ne pondère que le battement et l'ébullition :
-     * sous le curseur, l'activité intense retombe sans que la matière ne se
-     * fige, puisque la dérive de fond reste à pleine amplitude.
-     */
+    // Atténuation locale de l'activité. Elle ne pondère que le battement et
+    // l'ébullition : la dérive de fond reste à pleine amplitude, ce qui
+    // garantit que la matière ne se fige nulle part.
     const agitation = 1 - POINTER_CALM * grip
 
-    // Ressort vers l'attracteur central, renforcé pendant la diastole : c'est
-    // ce durcissement entre deux battements qui produit le recul.
+    // Ressort vers le centre, durci pendant la diastole : c'est ce raidissement
+    // entre deux battements qui produit le recul.
     const pull = ATTRACTOR_STRENGTH * (1 + PULSE_RECOIL * (1 - pulse))
     body.vx -= body.x * pull * dt
     body.vy -= body.y * pull * dt
@@ -351,10 +385,9 @@ function integrate(bodies: Body[], pointer: PointerState, dt: number, elapsed: n
       const radial = Math.hypot(body.x, body.y, body.z) || 1e-4
 
       // La poussée s'éteint à mesure qu'on approche de la paroi. Sans ce
-      // dégressif, chaque battement plaquait la périphérie contre la limite,
-      // qui la rabotait en disque : le contour extérieur devenait un cercle
-      // parfait au lieu d'une masse qui respire. L'expansion part donc du
-      // cœur, ce qui est aussi le comportement d'un liquide qui bout.
+      // dégressif, chaque battement plaque la périphérie contre la limite, qui
+      // la rabote en disque. L'expansion part donc du cœur — ce qui est aussi
+      // le comportement d'un liquide qui bout.
       const ratio = Math.min(1, radial / BOUNDS_RADIUS)
       const headroom = 1 - ratio * ratio
 
@@ -409,9 +442,8 @@ function integrate(bodies: Body[], pointer: PointerState, dt: number, elapsed: n
     body.y += body.vy * dt
     body.z += body.vz * dt
 
-    // Paroi cylindrique : on ramène la goutte sur le cercle et on absorbe sa
-    // composante radiale. La distance au centre est ainsi bornée quelle que
-    // soit la direction, ce qu'une contrainte par axe ne garantit pas.
+    // Clamp cylindrique, dernier recours derrière la paroi souple : on ramène
+    // la goutte sur le cercle et on absorbe sa composante radiale sortante.
     const radial = Math.hypot(body.x, body.y)
     if (radial > BOUNDS_RADIUS) {
       const nx = body.x / radial
@@ -441,17 +473,16 @@ function integrate(bodies: Body[], pointer: PointerState, dt: number, elapsed: n
  * Retire le mouvement d'ensemble de l'amas.
  *
  * La dérive et l'ébullition sont déphasées goutte par goutte, mais leur somme
- * instantanée n'est jamais nulle : il reste à chaque pas une composante de
- * translation commune, et la masse entière se met à naviguer de haut en bas.
- * C'est un artefact, pas de l'agitation — et il ne fait qu'empirer quand on
- * monte l'intensité, ce qui rendait tout renforcement inexploitable.
+ * instantanée n'est jamais nulle : il subsiste à chaque pas une composante de
+ * translation commune, et la masse entière se met à naviguer dans le cadre.
+ * C'est un artefact, pas de l'agitation, et il croît avec l'intensité.
  *
- * On annule donc les deux termes rigides : la vitesse moyenne, et le décalage
- * du barycentre. Toute la dynamique interne — chaque goutte par rapport à ses
- * voisines — reste strictement intacte. L'amas s'agite sur place.
+ * On annule donc les deux termes rigides — la vitesse moyenne et le décalage du
+ * barycentre. Toute la dynamique interne, chaque goutte par rapport à ses
+ * voisines, reste strictement intacte : l'amas s'agite sur place.
  *
- * Le verrou vaut aussi sous le curseur : la poussée y devient une déformation
- * pure au lieu de faire glisser la boule hors du cadre.
+ * Le verrou vaut aussi sous le curseur, où la poussée devient une déformation
+ * pure au lieu de faire glisser la masse hors du cadre.
  */
 function lockCentreOfMass(bodies: Body[]) {
   let totalMass = 0
@@ -490,9 +521,12 @@ function lockCentreOfMass(bodies: Body[]) {
 }
 
 /**
- * Sphère englobant toutes les gouttes, marge de lissage comprise.
- * Le shader s'en sert pour rejeter en une intersection les rayons qui ratent
- * la masse, au lieu de les faire marcher dans le vide.
+ * Rayon de la sphère englobant toutes les gouttes, marge de lissage comprise.
+ *
+ * Le shader s'en sert pour rejeter en une seule intersection les rayons qui
+ * ratent la masse, au lieu de les faire marcher dans le vide.
+ *
+ * @param blend Rayon de fusion appliqué côté shader.
  */
 export function boundingSphere(bodies: Body[], blend: number) {
   let radius = 0
@@ -505,7 +539,12 @@ export function boundingSphere(bodies: Body[], blend: number) {
   return radius + blend * 2
 }
 
-/** Aplatit les gouttes dans le tampon d'uniforms attendu par le shader. */
+/**
+ * Aplatit les gouttes dans le tampon d'uniforms attendu par le shader, au
+ * format `(x, y, z, rayon)` par goutte.
+ *
+ * @param positions Tampon de `CELL_COUNT * 4` flottants, réécrit sur place.
+ */
 export function packBodies(bodies: Body[], positions: Float32Array) {
   for (let i = 0; i < bodies.length; i++) {
     const body = bodies[i]
@@ -519,19 +558,20 @@ export function packBodies(bodies: Body[], positions: Float32Array) {
 }
 
 /**
- * Crée une simulation autonome. Le reliquat de pas fixe et le temps écoulé sont
- * gardés dans la clôture : l'appelant n'a qu'à fournir le delta de sa frame.
+ * Crée une simulation autonome, déjà stabilisée.
+ *
+ * Le reliquat de pas fixe et le temps écoulé sont gardés dans la clôture :
+ * l'appelant n'a qu'à fournir le delta de sa frame et lire `bodies` et `pulse`.
  */
 export function createSimulation() {
   const bodies = createBodies()
   let carry = 0
   let elapsed = 0
 
-  // Pré-chauffage. La distribution initiale place les gouttes au hasard, donc
-  // avec de forts recouvrements que la répulsion résout brutalement : sans ça,
-  // le visiteur voit la masse se disloquer puis se rassembler pendant les deux
-  // premières secondes - précisément à l'ouverture de la page. On absorbe ce
-  // transitoire hors écran, le hero s'ouvre sur une masse déjà stable.
+  // Pré-chauffage hors écran. La distribution initiale place les gouttes au
+  // hasard, donc avec de forts recouvrements que la répulsion résout
+  // brutalement : sans ces deux secondes absorbées d'avance, le visiteur verrait
+  // la masse se disloquer puis se rassembler à l'ouverture de la page.
   const idle: PointerState = { x: 0, y: 0, vx: 0, vy: 0, weight: 0 }
   for (let i = 0; i < 260; i++) {
     integrate(bodies, idle, FIXED_STEP, elapsed)
@@ -540,9 +580,16 @@ export function createSimulation() {
 
   return {
     bodies,
-    /** Valeur de l'enveloppe cardiaque au dernier pas. Le shader s'en sert
-     *  pour faire vibrer la luminosité en même temps que le volume. */
+    /**
+     * Valeur de l'enveloppe cardiaque au dernier pas. Le shader s'en sert pour
+     * faire vibrer la luminosité en même temps que le volume.
+     */
     pulse: 0,
+    /**
+     * Rattrape le temps écoulé par pas fixes.
+     *
+     * @param delta Durée de la frame, en secondes.
+     */
     step(pointer: PointerState, delta: number) {
       elapsed += delta
       carry = Math.min(carry + delta, MAX_ACCUMULATED)
