@@ -78,9 +78,9 @@ export function Preparation() {
         <SectionHeading
           eyebrow="Préparation au don"
           title={
-            <>
-              Bien préparé, c'est déjà <span className="text-blood-600">à moitié donné</span>
-            </>
+            <p>
+              Bien préparé, c'est <br/> déjà à <span className="text-blood-600">moitié donné</span>
+            </p>
           }
           description="Trois moments, trois listes simples. Suivez-les et votre don se passera en douceur."
         />

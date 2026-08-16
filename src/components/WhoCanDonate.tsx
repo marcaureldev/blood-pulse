@@ -51,10 +51,10 @@ export function WhoCanDonate() {
           eyebrow="Qui peut donner"
           title={
             <>
-              Vous êtes peut-être{" "}
-              <span className="fx-marker [--ink:var(--color-blood-300)]">
-                déjà éligible.
-              </span>
+              Vous êtes peut
+              <p className="">
+              être <span className="sm:inline fx-marker [--ink:var(--color-blood-300)]">éligible.</span>
+              </p>
             </>
           }
           description="Les règles sont là pour vous protéger. Dans la majorité des cas, être en bonne santé suffit."
