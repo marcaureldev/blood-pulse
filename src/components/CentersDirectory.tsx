@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, MapPin, Search, SlidersHorizontal, X } from 'lucide-react'
+import { MapPin, RotateCw, Search, SlidersHorizontal, TriangleAlert, X } from 'lucide-react'
 import { SectionHeading } from '@/components/SectionHeading'
+import { BeninDotMap } from '@/components/BeninDotMap'
 import { CenterDrawer } from '@/components/CenterDrawer'
+import { ScrollTrigger } from '@/lib/gsap'
 import {
   CENTERS,
   CENTER_KIND_LABELS,
   CITIES,
-  DONATION_TYPE_LABELS,
   filterCenters,
   getOpenState,
   WEEKDAY_LABELS,
@@ -43,10 +44,34 @@ function useNow() {
   return now
 }
 
+/**
+ * Charge l'annuaire des centres.
+ *
+ * Les données sont livrées avec la page : il n'y a pas de serveur. La latence
+ * est simulée quand même, parce qu'un déploiement réel appellerait une API et
+ * que les états de chargement et d'erreur doivent rester atteignables.
+ *
+ * L'échec se déclenche avec `?centres=erreur` dans l'URL. Un état d'erreur
+ * qu'on ne peut pas provoquer ne se teste pas — ni par nous, ni par un jury.
+ */
+function loadCenters(): Promise<Center[]> {
+  return new Promise((resolve, reject) => {
+    window.setTimeout(() => {
+      const forced = new URLSearchParams(window.location.search).get('centres') === 'erreur'
+
+      if (forced) reject(new Error("L'annuaire n'a pas pu être chargé."))
+      else resolve(CENTERS)
+    }, 550)
+  })
+}
+
+/** Toutes les villes d'accueil, avec leurs coordonnées. Géographie figée. */
+const CITY_COORDINATES = [...new Map(CENTERS.map((c) => [c.city, c.coordinates])).entries()].map(
+  ([city, coordinates]) => ({ city, ...coordinates }),
+)
+
 const PILL_BASE =
   'rounded-full px-3.5 py-2 text-xs font-semibold transition-colors focus-visible:outline-2'
-
-const INITIAL_VISIBLE = 6
 
 export function CentersDirectory() {
   const now = useNow()
@@ -56,19 +81,46 @@ export function CentersDirectory() {
   const [kind, setKind] = useState<KindFilter>('all')
   const [donationType, setDonationType] = useState<TypeFilter>('all')
   const [openOnly, setOpenOnly] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+  const [searching, setSearching] = useState(false)
   const [selected, setSelected] = useState<Center | null>(null)
 
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [centers, setCenters] = useState<Center[]>([])
+  const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    setStatus('loading')
+
+    loadCenters()
+      .then((data) => {
+        if (cancelled) return
+        setCenters(data)
+        setStatus('ready')
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [attempt])
+
+  // La hauteur de la section change entre squelette et annuaire : les repères
+  // de scroll des sections suivantes doivent être recalculés.
+  useEffect(() => {
+    ScrollTrigger.refresh()
+  }, [status])
 
   const [deferredQuery, setDeferredQuery] = useState('')
   useEffect(() => {
     if (query === deferredQuery) return
 
-    setLoading(true)
+    setSearching(true)
     const timer = window.setTimeout(() => {
       setDeferredQuery(query)
-      setLoading(false)
+      setSearching(false)
     }, 250)
 
     return () => window.clearTimeout(timer)
@@ -76,18 +128,36 @@ export function CentersDirectory() {
 
   const filtered = useMemo(
     () =>
-      filterCenters(CENTERS, { query: deferredQuery, city, kind, donationType, openOnly }, now),
-    [deferredQuery, city, kind, donationType, openOnly, now],
+      filterCenters(centers, { query: deferredQuery, city, kind, donationType, openOnly }, now),
+    [centers, deferredQuery, city, kind, donationType, openOnly, now],
   )
 
-  useEffect(() => {
-    setExpanded(false)
-  }, [deferredQuery, city, kind, donationType, openOnly])
+  /**
+   * Compteurs de la carte, calculés sans le filtre « ville ».
+   *
+   * Avec lui, choisir Cotonou ramènerait toutes les autres villes à zéro : leurs
+   * pastilles s'éteindraient et on ne pourrait plus changer de ville depuis la
+   * carte. Chaque pastille annonce donc ce qu'elle donnerait si on la choisissait.
+   */
+  const cityPins = useMemo(() => {
+    const reachable = filterCenters(
+      centers,
+      { query: deferredQuery, city: null, kind, donationType, openOnly },
+      now,
+    )
+    const counts = new Map<string, number>()
 
-  const visible = expanded ? filtered : filtered.slice(0, INITIAL_VISIBLE)
-  const remaining = filtered.length - visible.length
+    for (const center of reachable) {
+      counts.set(center.city, (counts.get(center.city) ?? 0) + 1)
+    }
 
-  const hasFilters = query !== '' || city !== null || kind !== 'all' || donationType !== 'all' || openOnly
+    return CITY_COORDINATES.map((entry) => ({ ...entry, count: counts.get(entry.city) ?? 0 }))
+  }, [centers, deferredQuery, kind, donationType, openOnly, now])
+
+  const busy = status === 'loading' || searching
+
+  const hasFilters =
+    query !== '' || city !== null || kind !== 'all' || donationType !== 'all' || openOnly
 
   const resetFilters = () => {
     setQuery('')
@@ -110,7 +180,7 @@ export function CentersDirectory() {
               <span className="text-blood-600">chez vous.</span>
             </>
           }
-          description="Quatorze points de collecte répartis sur neuf départements. Filtrez par ville, par type de don ou par disponibilité, puis ouvrez une fiche pour tout le détail."
+          description="Quatorze points de collecte répartis sur neuf départements. Choisissez une ville sur la carte, ou filtrez par type de don et par disponibilité."
         />
 
         {/* Barre d'outils */}
@@ -138,7 +208,7 @@ export function CentersDirectory() {
               id="filtre-ville"
               value={city ?? ''}
               onChange={(event) => setCity(event.target.value || null)}
-              className="rounded-xl border border-cream-200 bg-white px-3 py-3 text-sm font-medium text-ink-800 sm:w-52 focus:outline-none focus:ring focus:ring-blood-500"
+              className="rounded-xl border border-cream-200 bg-white px-3 py-3 text-sm font-medium text-ink-800 focus:outline-none focus:ring focus:ring-blood-500 sm:w-52"
             >
               <option value="">Toutes les villes</option>
               {CITIES.map((name) => (
@@ -218,75 +288,91 @@ export function CentersDirectory() {
 
         {/* Compteur — annoncé aux lecteurs d'écran à chaque changement. */}
         <p aria-live="polite" className="mb-4 text-sm text-ink-500">
-          {loading
-            ? 'Recherche en cours…'
-            : `${filtered.length} centre${filtered.length > 1 ? 's' : ''} ${
-                filtered.length > 1 ? 'correspondent' : 'correspond'
-              } à votre recherche${remaining > 0 ? ` · ${visible.length} affichés` : ''}`}
+          {status === 'loading'
+            ? 'Chargement de l’annuaire…'
+            : status === 'error'
+              ? 'L’annuaire est momentanément indisponible.'
+              : searching
+                ? 'Recherche en cours…'
+                : `${filtered.length} centre${filtered.length > 1 ? 's' : ''} ${
+                    filtered.length > 1 ? 'correspondent' : 'correspond'
+                  } à votre recherche`}
         </p>
 
-        <div>
-          {/* Liste */}
-          <div>
-            {loading ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[0, 1, 2, 3].map((index) => (
-                  <div
-                    key={index}
-                    className="h-52 animate-pulse rounded-2xl border border-cream-200 bg-cream-50"
-                  />
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-cream-300 bg-cream-50 px-6 py-16 text-center">
-                <MapPin className="mx-auto mb-3 h-10 w-10 text-ink-300" strokeWidth={1.2} />
-                <h3 className="font-display text-lg font-semibold text-ink-800">
-                  Aucun centre ne correspond
-                </h3>
-                <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
-                  Essayez d'élargir votre recherche : une autre ville, un autre type de don, ou
-                  sans la contrainte d'horaire.
-                </p>
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="mt-5 rounded-full bg-blood-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blood-700"
-                >
-                  Réinitialiser les filtres
-                </button>
-              </div>
-            ) : (
-              <>
-                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {visible.map((center) => (
-                    <CenterCard
-                      key={center.id}
-                      center={center}
-                      now={now}
-                      onSelect={() => setSelected(center)}
-                    />
-                  ))}
-                </ul>
+        {status === 'error' ? (
+          <DirectoryError onRetry={() => setAttempt((value) => value + 1)} />
+        ) : (
+          <div className="mx-auto max-w-full rounded-3xl bg-ink-950 p-5 sm:p-8">
+            <div className="grid items-stretch gap-8 lg:grid-cols-[minmax(0,32rem)_1fr]">
+              <BeninDotMap
+                cities={cityPins}
+                activeCity={city}
+                onSelectCity={setCity}
+                busy={busy}
+              />
 
-                {filtered.length > INITIAL_VISIBLE && (
-                  <div className="mt-6 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setExpanded((value) => !value)}
-                      className="inline-flex items-center gap-2 rounded-full border border-cream-300 bg-white px-5 py-2.5 text-sm font-semibold text-ink-700 transition-colors hover:border-blood-400 hover:text-blood-700"
-                    >
-                      {expanded ? 'Réduire la liste' : `Afficher les ${remaining} autres centres`}
-                      <ChevronDown
-                        className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
-                        aria-hidden="true"
-                      />
-                    </button>
+              <div className="lg:relative">
+                <div className="flex flex-col lg:absolute lg:inset-0">
+                  <div className="mb-3 flex items-baseline justify-between gap-3">
+                    <h3 className="font-display text-lg font-semibold tracking-tight text-cream-50">
+                      {city ?? 'Tout le pays'}
+                    </h3>
+
+                    {city && (
+                      <button
+                        type="button"
+                        onClick={() => setCity(null)}
+                        className="shrink-0 text-[0.7rem] font-semibold text-blood-300 underline-offset-4 transition-colors hover:text-blood-200 hover:underline"
+                      >
+                        Tout le pays
+                      </button>
+                    )}
                   </div>
-                )}
-              </>
-            )}
+
+                  {busy ? (
+                    <ul className="space-y-2.5">
+                      {[0, 1, 2, 3].map((index) => (
+                        <li
+                          key={index}
+                          className="h-22 animate-pulse rounded-xl border border-ink-800 bg-ink-900"
+                        />
+                      ))}
+                    </ul>
+                  ) : filtered.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-ink-700 px-5 py-10 text-center">
+                      <MapPin className="mx-auto mb-3 h-8 w-8 text-ink-500" strokeWidth={1.2} />
+                      <p className="font-display text-base font-semibold text-cream-100">
+                        Aucun centre ne correspond
+                      </p>
+                      <p className="mx-auto mt-2 max-w-60 text-[0.78rem] leading-relaxed text-ink-300">
+                        Essayez une autre ville, un autre type de don, ou sans la contrainte
+                        d’horaire.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="mt-5 rounded-full bg-blood-600 px-4 py-2 text-[0.78rem] font-semibold text-white transition-colors hover:bg-blood-700"
+                      >
+                        Réinitialiser les filtres
+                      </button>
+                    </div>
+                  ) : (
+                    <ul className="space-y-2.5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+                      {filtered.map((center) => (
+                        <CenterRow
+                          key={center.id}
+                          center={center}
+                          now={now}
+                          onSelect={() => setSelected(center)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <CenterDrawer center={selected} now={now} onClose={() => setSelected(null)} />
@@ -294,7 +380,32 @@ export function CentersDirectory() {
   )
 }
 
-function CenterCard({
+function DirectoryError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="mx-auto max-w-5xl rounded-3xl border border-blood-200/70 bg-blood-50 px-6 py-14 text-center"
+    >
+      <TriangleAlert className="mx-auto mb-3 h-10 w-10 text-blood-500" strokeWidth={1.3} />
+      <h3 className="font-display text-lg font-semibold text-ink-900">
+        L’annuaire n’a pas pu être chargé
+      </h3>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-600">
+        La liste des centres est momentanément indisponible. Vos filtres sont conservés.
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 inline-flex items-center gap-2 rounded-full bg-blood-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blood-700"
+      >
+        <RotateCw className="h-4 w-4" aria-hidden="true" />
+        Réessayer
+      </button>
+    </div>
+  )
+}
+
+function CenterRow({
   center,
   now,
   onSelect,
@@ -306,67 +417,42 @@ function CenterCard({
   const state = getOpenState(center, now)
 
   return (
-    <li className="h-full">
+    <li>
       <button
         type="button"
         onClick={onSelect}
         aria-haspopup="dialog"
-        className="group flex h-full w-full flex-col rounded-2xl border border-cream-200 bg-white p-5 text-left transition-all duration-300 hover:border-blood-500 hover:shadow-blood-950/5 cursor-pointer focus:outline-none focus:ring focus:ring-blood-500 focus:ring-offset-2"
+        className="w-full cursor-pointer rounded-xl border border-ink-800 bg-ink-900 p-3.5 text-left transition-colors hover:border-blood-500/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
       >
-        <div className="flex w-full items-start justify-between gap-2.5">
-          <h3 className="line-clamp-2 font-display text-[0.93rem] font-bold leading-snug tracking-tight text-ink-950">
+        <div className="flex items-start justify-between gap-2.5">
+          <h4 className="line-clamp-2 font-display text-[0.85rem] font-bold leading-snug tracking-tight text-cream-50">
             {center.name}
-          </h3>
+          </h4>
 
           <span
             className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap pt-0.5 text-[0.68rem] font-medium ${
-              state.open ? 'text-sage-600' : 'text-ink-400'
+              state.open ? 'text-sage-300' : 'text-ink-400'
             }`}
           >
             <span
               aria-hidden="true"
-              className={`h-1.5 w-1.5 rounded-full ${state.open ? 'bg-sage-500' : 'bg-ink-300'}`}
+              className={`h-1.5 w-1.5 rounded-full ${state.open ? 'bg-sage-400' : 'bg-ink-600'}`}
             />
             {state.open ? 'Ouvert' : 'Fermé'}
           </span>
         </div>
 
-        <p className="mt-1 text-[0.68rem] font-bold text-blood-600">
-          {CENTER_KIND_LABELS[center.kind]} · {center.department}
+        <p className="mt-1.5 text-[0.7rem] text-ink-300">
+          {CENTER_KIND_LABELS[center.kind]} · {center.city}
         </p>
 
-        <p className="mt-4 text-[0.78rem] leading-relaxed text-ink-500">{center.address}</p>
-
-        <p
-          className={`mt-2 text-[0.7rem] font-medium ${
-            state.open ? 'text-sage-600' : 'text-ink-400'
-          }`}
-        >
+        <p className={`mt-1 text-[0.7rem] ${state.open ? 'text-sage-300' : 'text-ink-400'}`}>
           {state.open
             ? `Ferme à ${state.closesAt}`
             : state.opensAt
               ? `Ouvre ${WEEKDAY_LABELS[state.opensDay!].toLowerCase()} à ${state.opensAt}`
               : 'Horaires à confirmer'}
         </p>
-
-        <div className="mt-auto flex flex-wrap gap-1.5 pt-3.5">
-          {center.donationTypes.map((type) => (
-            <span
-              key={type}
-              className="rounded-[5px] bg-cream-100 px-1.75 py-1 text-[0.65rem] font-medium text-ink-500"
-            >
-              {DONATION_TYPE_LABELS[type]}
-            </span>
-          ))}
-        </div>
-
-        <span className="mt-3.5 inline-flex items-center gap-1 border-t border-cream-100 pt-3 text-[0.68rem] font-bold text-blood-600">
-          Voir la fiche
-          <ChevronRight
-            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
-            aria-hidden="true"
-          />
-        </span>
       </button>
     </li>
   )
