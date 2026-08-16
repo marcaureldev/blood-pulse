@@ -222,6 +222,198 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Bouton à remplissage « fill right »
+   ---------------------------------------------------------------------------
+   Un panneau opaque entre par la gauche pendant que le libellé se change : le
+   texte de repos sort par la droite en se floutant, celui d'arrivée le suit
+   dans la couleur inverse. Deux pseudo-éléments portent les deux copies, le
+   texte réel ne servant plus qu'à réserver la place et à rester lisible par
+   les technologies d'assistance.
+
+   Tout passe par des variables : recolorer un bouton, c'est redéfinir --bink
+   et --bsurf, jamais toucher aux règles.
+   --------------------------------------------------------------------------- */
+.btn {
+  --primary: var(--color-blood-600);
+  --secondary: var(--color-ink-900);
+  --surface: var(--color-cream-50);
+  --bink: var(--primary);
+  --bsurf: var(--surface);
+
+  --btn-radius: 9999px;
+  --btn-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --btn-duration: 0.4s;
+  --btn-blur: 6px;
+
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.75rem;
+  border: 1px solid var(--bink);
+  border-radius: var(--btn-radius);
+  background: transparent;
+  color: var(--bink);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  overflow: hidden;
+
+  /* Jamais `transition: all` : ce projet a déjà perdu deux sections parce
+     qu'une transition fourre-tout couvrait opacity et transform, que GSAP
+     animait au même moment. On n'annonce que ce qui change réellement. */
+  transition:
+    color var(--btn-duration) var(--btn-ease),
+    border-color var(--btn-duration) var(--btn-ease);
+}
+
+.btn:focus-visible {
+  /* `outline` et non `box-shadow` : l'overflow caché rognerait un anneau interne. */
+  outline: 2px solid var(--bink);
+  outline-offset: 3px;
+}
+
+/* Le panneau qui vient remplir le bouton. */
+.btn::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: var(--bink);
+  transition: transform var(--btn-duration) var(--btn-ease);
+}
+
+/* L'icône passe au-dessus du panneau et change de couleur avec lui : sans quoi
+   elle resterait en --bink sur un fond --bink, donc invisible au survol. */
+.btn-icon {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  color: var(--bink);
+  transition: color var(--btn-duration) var(--btn-ease);
+}
+
+.fx-4:hover .btn-icon,
+.fx-4:focus-visible .btn-icon {
+  color: var(--bsurf);
+}
+
+.btn-label {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  /* Le texte réel tient la largeur et reste dans l'arbre d'accessibilité ;
+     ce sont ses deux copies qui s'échangent à l'écran. */
+  color: transparent;
+}
+
+.btn-label::before,
+.btn-label::after {
+  content: attr(data-label);
+  position: absolute;
+  inset: 0;
+  transition:
+    transform var(--btn-duration) var(--btn-ease),
+    filter var(--btn-duration) var(--btn-ease),
+    opacity var(--btn-duration) var(--btn-ease);
+}
+
+/* Libellé au repos. */
+.btn-label::before {
+  color: var(--bink);
+  opacity: 1;
+  filter: blur(0);
+  transform: translateX(0);
+}
+
+/* Libellé d'arrivée, posté à gauche comme le panneau. */
+.btn-label::after {
+  color: var(--bsurf);
+  opacity: 0;
+  filter: blur(var(--btn-blur));
+  transform: translateX(-60%);
+}
+
+.fx-4::before {
+  transform: translateX(-100%);
+}
+
+.fx-4:hover::before,
+.fx-4:focus-visible::before {
+  transform: translateX(0);
+}
+
+.fx-4:hover .btn-label::before,
+.fx-4:focus-visible .btn-label::before {
+  opacity: 0;
+  filter: blur(var(--btn-blur));
+  transform: translateX(60%);
+}
+
+.fx-4:hover .btn-label::after,
+.fx-4:focus-visible .btn-label::after {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateX(0);
+}
+
+/* Variantes : seules les deux couleurs changent. */
+.btn--ghost {
+  --bink: var(--secondary);
+}
+
+.btn--invert {
+  --bink: var(--color-cream-50);
+  --bsurf: var(--color-blood-700);
+}
+
+.btn--on-dark {
+  --bink: var(--color-blood-400);
+  --bsurf: var(--color-ink-950);
+}
+
+.btn--solid {
+  background: var(--bink);
+  color: var(--bsurf);
+}
+
+.btn--solid::before {
+  background: var(--bsurf);
+}
+
+.btn--solid .btn-label::before {
+  color: var(--bsurf);
+}
+
+.btn--solid .btn-label::after {
+  color: var(--bink);
+}
+
+.btn--solid .btn-icon {
+  color: var(--bsurf);
+}
+
+.fx-4.btn--solid:hover .btn-icon,
+.fx-4.btn--solid:focus-visible .btn-icon {
+  color: var(--bink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Le glissement et le flou disparaissent, l'échange de couleur reste : le
+     bouton doit continuer à signaler le survol. Le bloc global plus bas ramène
+     déjà les durées à zéro. */
+  .btn-label::before,
+  .btn-label::after {
+    filter: none;
+    transform: none;
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;

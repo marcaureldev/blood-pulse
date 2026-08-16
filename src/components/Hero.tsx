@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Droplet, HeartPulse, MapPin } from "lucide-react";
+import { FillButton } from "@/components/FillButton";
 import { HeroScene } from "@/components/HeroScene";
 import { gsap, useGSAP } from "@/lib/gsap";
 
@@ -18,10 +19,18 @@ export function Hero() {
           });
 
           timeline
-            .from("[data-hero='badge']", { autoAlpha: 0, y: 14, duration: 0.55 })
+            .from("[data-hero='badge']", {
+              autoAlpha: 0,
+              y: 14,
+              duration: 0.55,
+            })
             .from("[data-hero='title']", { autoAlpha: 0, y: 26 }, "-=0.3")
             .from("[data-hero='lede']", { autoAlpha: 0, y: 20 }, "-=0.5")
-            .from("[data-hero='actions']", { autoAlpha: 0, y: 18, duration: 0.6 }, "-=0.45")
+            .from(
+              "[data-hero='actions']",
+              { autoAlpha: 0, y: 18, duration: 0.6 },
+              "-=0.45",
+            )
             .from(
               "[data-hero='scene']",
               { autoAlpha: 0, scale: 0.92, duration: 1.2, ease: "power2.out" },
@@ -51,7 +60,9 @@ export function Hero() {
               className="inline-flex items-center gap-2 bg-blood-50 border border-blood-200/60 text-blood-700 text-sm font-medium px-4 py-1.5 rounded-full mb-6"
             >
               <HeartPulse className="w-4 h-4" />
-              <span>1 % de la population : le seuil minimal fixé par l'OMS</span>
+              <span>
+                1 % de la population : le seuil minimal fixé par l'OMS
+              </span>
             </div>
 
             <h1
@@ -60,8 +71,9 @@ export function Hero() {
             >
               Un geste{" "}
               <span className="relative inline-block">
-                <span className="relative z-10 fx-marker [--ink:var(--color-blood-300)]">simple</span>
-
+                <span className="relative z-10 fx-marker [--ink:var(--color-blood-300)]">
+                  simple
+                </span>
               </span>
               ,<br />
               une vie sauvée.
@@ -79,21 +91,24 @@ export function Hero() {
               . On vous explique tout, simplement.
             </p>
 
-            <div data-hero="actions" className="mt-8 flex flex-col sm:flex-row gap-3">
-              <a
+            <div
+              data-hero="actions"
+              className="mt-8 flex flex-col sm:flex-row gap-3"
+            >
+              <FillButton
                 href="#eligibilite"
-                className="inline-flex items-center justify-center gap-2 bg-blood-600 hover:bg-blood-700 text-white font-semibold px-7 py-4 rounded-full transition-all hover:shadow-xl hover:shadow-blood-600/30 hover:-translate-y-0.5"
+                variant="solid"
+                icon={<Droplet className="h-5 w-5" />}
               >
-                <Droplet className="w-5 h-5 fill-white/30" />
                 Tester mon éligibilité
-              </a>
-              <a
+              </FillButton>
+              <FillButton
                 href="#centres"
-                className="inline-flex items-center justify-center gap-2 bg-white hover:bg-cream-100 border border-cream-300 text-ink-800 font-semibold px-7 py-4 rounded-full transition-all hover:-translate-y-0.5"
+                variant="ghost"
+                icon={<MapPin className="h-5 w-5" />}
               >
-                <MapPin className="w-5 h-5 text-blood-600" />
                 Trouver un centre
-              </a>
+              </FillButton>
             </div>
           </div>
 
