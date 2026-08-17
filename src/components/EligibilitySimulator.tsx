@@ -258,7 +258,7 @@ export function EligibilitySimulator() {
       id="eligibilite"
       className="bg-ink-950 py-20 text-cream-100 md:py-28"
     >
-      <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 lg:grid-cols-[1fr_1fr] lg:gap-12">
         {/* Colonne d'intro */}
         <div className="lg:pt-6">
           <p className="mb-5 flex items-center gap-2.5 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-blood-400">
@@ -436,8 +436,6 @@ export function EligibilitySimulator() {
                           onChange={(event) => setLastDonation(event.target.value)}
                           aria-invalid={error !== null}
                           aria-describedby={error ? 'sim-error' : undefined}
-                          // L'icône native du calendrier est sombre, donc
-                          // invisible sur ce fond. `invert` la retourne en clair.
                           className={`${FIELD} [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:invert ${
                             error ? 'border-blood-500' : 'border-ink-700'
                           }`}

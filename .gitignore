@@ -25,3 +25,6 @@ dist-ssr
 
 # Prototypes de référence - support de travail, hors livrable
 _refs/
+
+.claude/
+.impeccable/
