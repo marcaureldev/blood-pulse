@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Droplet, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { FillButton } from "./FillButton";
 
 const NAV_LINKS = [
@@ -35,12 +35,13 @@ export function Navbar() {
           className="flex items-center gap-2 group"
           aria-label="Accueil - Don de Sang"
         >
-          <span className="relative">
-            <Droplet className="w-7 h-7 text-blood-600 fill-blood-500 transition-transform group-hover:scale-110" />
-          </span>
-          <p className="font-display font-semibold text-xl text-blood-600">
-            Blood<span className="text-ink-950">Pulse</span>
-          </p>
+          <div className="w-full h-full max-w-40">
+            <img
+              src="/logo.svg"
+              alt="Blood Pulse"
+              className="w-full h-full object-contain"
+            />
+          </div>
         </a>
 
         <ul className="hidden md:flex items-center gap-7">
@@ -56,7 +57,11 @@ export function Navbar() {
           ))}
         </ul>
 
-        <FillButton href="#eligibilite" variant="solid" className="hidden md:inline-flex">
+        <FillButton
+          href="#eligibilite"
+          variant="solid"
+          className="hidden md:inline-flex"
+        >
           Tester mon éligibilité
         </FillButton>
 

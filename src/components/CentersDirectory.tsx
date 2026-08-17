@@ -377,7 +377,7 @@ export function CentersDirectory() {
             ref={panel}
             className="mx-auto max-w-full rounded-3xl bg-ink-950 overflow-hidden p-5"
           >
-            <div className="grid items-stretch gap-8 lg:grid-cols-[1.5fr_0.5fr]">
+            <div className="grid items-stretch gap-2 lg:grid-cols-[1.5fr_0.5fr]">
               {nearMap ? (
                 <Suspense fallback={<MapPlaceholder />}>
                   <AfricaFlatMap

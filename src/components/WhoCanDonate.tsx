@@ -45,7 +45,7 @@ export function WhoCanDonate() {
   const grid = useReveal<HTMLDivElement>({ items: "article" });
 
   return (
-    <section id="qui-peut-donner" className="bg-cream-50 py-12">
+    <section id="qui-peut-donner" className="bg-cream-50 py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeading
           eyebrow="Qui peut donner"

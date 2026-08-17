@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Droplet } from 'lucide-react'
 import { BloodCells } from '@/components/BloodCells'
 
 /**
@@ -11,14 +10,7 @@ function DropFallback() {
   return (
     <div className="absolute inset-0 flex items-center justify-center">
       <div className="relative motion-safe:animate-float">
-        <Droplet
-          className="w-48 h-48 text-blood-500 fill-blood-400/80 drop-shadow-[0_8px_30px_rgba(211,47,47,0.25)]"
-          strokeWidth={1.2}
-        />
-        <div className="absolute inset-0 flex flex-col items-center justify-center -mt-2">
-          <span className="font-display font-600 text-5xl text-white">1</span>
-          <span className="text-white/90 text-sm font-medium tracking-wide">don = 3 vies</span>
-        </div>
+        <img src="/fallback-hero.png" alt="Blood drop" className="w-full h-full object-cover" />
       </div>
     </div>
   )
